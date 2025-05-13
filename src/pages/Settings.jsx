@@ -1,19 +1,62 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import '../assets/css/style.css';
 
 function Settings() {
-  const [email, setEmail] = useState('user@example.com');
-  const [username, setUsername] = useState('MarthaJones');
+  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const token = localStorage.getItem('token');
+
+      try {
+        const response = await fetch('http://localhost:5000/api/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        const data = await response.json();
+        console.log('data: ', data);
+        if (!response.ok) throw new Error(data.msg || 'Failed to load user data');
+
+        setEmail(data.email);
+        setUsername(data.username);
+      } catch (err) {
+        console.error(err);
+        alert(err.message);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // You could send this data to an API here
-    console.log({ email, username, password });
-    alert('Changes saved.');
+    const token = localStorage.getItem('token');
+
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ email, username, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.msg || 'Failed to save changes');
+      alert(data.msg);
+    } catch (err) {
+      console.error(err);
+      alert(err.message);
+    }
   };
 
   return (

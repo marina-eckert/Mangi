@@ -1,15 +1,32 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
-import { useNavigate } from 'react-router-dom';
 import '../assets/css/style.css';
 
-// Import images
-import avatar1 from '../assets/images/avatar1.jpg';
-import avatar2 from '../assets/images/avatar2.jpg';
-
 function Teams() {
-  const navigate = useNavigate();
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/users');
+        if (response.ok) {
+          const data = await response.json();
+          setUsers(data);
+        } else {
+          setError('Failed to load users');
+        }
+      } catch (err) {
+        setError('An error occurred while fetching users');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
 
   return (
     <div>
@@ -18,37 +35,34 @@ function Teams() {
       <div className="content">
         <div className="section">
           <h2 className="section-title">Your Team</h2>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <div className="card">
-              <img 
-                src={avatar1} 
-                alt="Alice" 
-                style={{ width: '40px', borderRadius: '50%', marginRight: '.5rem', verticalAlign: 'middle' }} 
-              />
-              Alice
-              <div className="more">⋮</div>
+
+          {error && <div className="error-message">{error}</div>}
+
+          {loading ? (
+            <div>Loading users...</div>
+          ) : (
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              {users.map((user) => (
+                <div className="card" key={user._id} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <img
+                    src={user.avatar || '/assets/images/default-avatar.png'}
+                    alt={user.username}
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                    }}
+                  />
+                  <div>
+                    <div>{user.username || 'Unknown User'}</div>
+                    <div>{user.email || 'No Email Provided'}</div>
+                  </div>
+                  <div className="more">⋮</div>
+                </div>
+              ))}
             </div>
-
-            <div className="card">
-              <img 
-                src={avatar2} 
-                alt="Bob" 
-                style={{ width: '40px', borderRadius: '50%', marginRight: '.5rem', verticalAlign: 'middle' }} 
-              />
-              Bob
-              <div className="more">⋮</div>
-            </div>
-
-            {/* Add more team members here */}
-
-            <button
-              className="button"
-              style={{ fontSize: '1.5rem', margin: '1rem auto', display: 'block' }}
-              onClick={() => navigate('/')}
-            >
-              ＋ Add Member
-            </button>
-          </div>
+          )}
         </div>
       </div>
     </div>

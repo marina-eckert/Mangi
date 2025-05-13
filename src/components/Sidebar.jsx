@@ -6,7 +6,7 @@ function Sidebar() {
     <div className="sidebar">
       <Link to="/" className="logo">Mangi</Link>
       <nav>
-        <Link to="/">🏠 Home</Link>
+        <Link to="/dashboard">🏠 Home</Link>
         <Link to="/projects">🗂 My Projects</Link>
         <Link to="/tasks">✅ My Tasks</Link>
         <Link to="/inbox">✉️ Inbox</Link>

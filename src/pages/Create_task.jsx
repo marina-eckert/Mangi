@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import '../assets/css/style.css';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
+import '../assets/css/style.css';
 
 function Create_task() {
   const [taskTitle, setTaskTitle] = useState('');
@@ -11,28 +11,68 @@ function Create_task() {
   const [endDate, setEndDate] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (event) => {
+  const navigate = useNavigate();
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    console.log({
+
+    if (!taskTitle || !taskType || !startDate || !endDate || !taskDescription || !assignedTo) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    const newTask = {
       taskTitle,
       taskType,
       startDate,
       endDate,
       taskDescription,
       assignedTo,
-    });
+    };
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('http://localhost:5000/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTask),
+      });
+
+      if (response.ok) {
+        alert('Task created successfully!');
+        navigate('/tasks');
+        setTaskTitle('');
+        setTaskType('');
+        setStartDate('');
+        setEndDate('');
+        setTaskDescription('');
+        setAssignedTo('');
+      } else {
+        setError('Failed to create task');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setError('An error occurred while creating the task');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="create-task-page">
       <Header />
       <Sidebar />
-
-      {/* Main Content */}
       <div className="content">
         <div className="section">
-          <h2 className="section-title">Tasks / Create a task</h2>
+          <h2 className="section-title">Tasks / Create a Task</h2>
+
+          {error && <div className="error-message">{error}</div>}
+
           <form onSubmit={handleSubmit} style={{ maxWidth: '600px', margin: '0 auto' }}>
             <div className="form-group">
               <label>Task Title</label>
@@ -41,6 +81,7 @@ function Create_task() {
                 placeholder="Task Title"
                 value={taskTitle}
                 onChange={(e) => setTaskTitle(e.target.value)}
+                required
               />
             </div>
             <div className="form-group">
@@ -50,6 +91,7 @@ function Create_task() {
                 placeholder="Task Type"
                 value={taskType}
                 onChange={(e) => setTaskType(e.target.value)}
+                required
               />
             </div>
             <div style={{ display: 'flex', gap: '1rem' }}>
@@ -59,6 +101,7 @@ function Create_task() {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
+                  required
                 />
               </div>
               <div className="form-group" style={{ flex: 1 }}>
@@ -67,6 +110,7 @@ function Create_task() {
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
+                  required
                 />
               </div>
             </div>
@@ -76,18 +120,22 @@ function Create_task() {
                 rows="4"
                 value={taskDescription}
                 onChange={(e) => setTaskDescription(e.target.value)}
+                required
               />
             </div>
             <div className="form-group">
               <label>Assign to</label>
               <input
                 type="text"
-                placeholder="User name"
+                placeholder="Assign to (User Name)"
                 value={assignedTo}
                 onChange={(e) => setAssignedTo(e.target.value)}
+                required
               />
             </div>
-            <button type="submit" className="button">Create</button>
+            <button type="submit" className="button" disabled={loading}>
+              {loading ? 'Creating...' : 'Create Task'}
+            </button>
           </form>
         </div>
       </div>

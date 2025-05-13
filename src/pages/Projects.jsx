@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import '../assets/css/style.css';
@@ -6,8 +6,30 @@ import { useNavigate } from 'react-router-dom';
 
 function Projects() {
   const navigate = useNavigate();
+  const [projects, setProjects] = useState([]);
 
-  const projectList = ['Project Alpha', 'Project Beta', 'Project Gamma'];
+  useEffect(() => {
+    const fetchProjects = async () => {
+      const token = localStorage.getItem('token');
+      try {
+        const response = await fetch('http://localhost:5000/api/projects', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.msg || 'Failed to fetch projects');
+
+        setProjects(data);
+      } catch (err) {
+        console.error(err);
+        alert(err.message);
+      }
+    };
+
+    fetchProjects();
+  }, []);
 
   return (
     <div>
@@ -17,9 +39,9 @@ function Projects() {
         <div className="section">
           <h2 className="section-title">My Projects</h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-            {projectList.map((project, index) => (
+            {projects.map((project, index) => (
               <div key={index} className="card">
-                {project}
+                {project.name}
                 <div className="more">⋮</div>
               </div>
             ))}

@@ -1,1 +1,3 @@
 # Mangi - Project Management System
+
+To get started, first install MongoDB on your system (follow the installation guide on the MongoDB website). Then, in the backend directory, run npm install to install dependencies, followed by npm run dev to start the backend server. For the frontend, navigate to the frontend directory, install dependencies with npm install, and run npm run dev to launch the React application. Ensure MongoDB is running locally via mongod before starting the application.

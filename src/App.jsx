@@ -14,31 +14,31 @@ import Tasks from './pages/Tasks';
 import Teams from './pages/Teams';
 import Sign_in from './pages/Sign_in';
 import Sign_up from './pages/Sign_up';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 function App() {
 
   return (
       <Router>
-      <Routes>
-        <Route path="/header" element={<Header />} />
-        <Route path="/sidebar" element={<Sidebar />} />
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/create_project" element={<Create_project />} />
-        <Route path="/create_task" element={<Create_task />} />
-        <Route path="/help" element={<Help />} />
-        <Route path="/inbox" element={<Inbox />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/projects" element={<Projects />} />
-        <Route path="/tasks" element={<Tasks />} />
-        <Route path="/teams" element={<Teams />} /> 
-        <Route path="/sign_in" element={<Sign_in />} /> 
-        <Route path="/sign_up" element={<Sign_up />} />
-      </Routes>
+        <Routes>
+          <Route path="/" element={<Navigate to="/sign_in" replace />} />
+          <Route path="/header" element={<Header />} />
+          <Route path="/sidebar" element={<Sidebar />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/create_project" element={<Create_project />} />
+          <Route path="/create_task" element={<Create_task />} />
+          <Route path="/help" element={<Help />} />
+          <Route path="/inbox" element={<Inbox />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/projects" element={<Projects />} />
+          <Route path="/tasks" element={<Tasks />} />
+          <Route path="/teams" element={<Teams />} /> 
+          <Route path="/sign_in" element={<Sign_in />} /> 
+          <Route path="/sign_up" element={<Sign_up />} />
+        </Routes>
     </Router>
-        
   )
 }
 
