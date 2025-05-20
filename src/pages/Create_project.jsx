@@ -10,6 +10,7 @@ function Create_project() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
+  const [assignedTeam, setAssignedTeam] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
@@ -26,6 +27,7 @@ function Create_project() {
       startDate,
       endDate,
       projectDescription,
+      assignedTeam,
     };
 
     try {
@@ -74,7 +76,7 @@ function Create_project() {
                 type="text"
                 placeholder="Project Title"
                 value={projectTitle}
-                onChange={(e) => setProjectTitle(e.target.value)} // Update state
+                onChange={(e) => setProjectTitle(e.target.value)} 
                 required
               />
             </div>
@@ -84,7 +86,7 @@ function Create_project() {
                 type="text"
                 placeholder="Project Type"
                 value={projectType}
-                onChange={(e) => setProjectType(e.target.value)} // Update state
+                onChange={(e) => setProjectType(e.target.value)}
                 required
               />
             </div>
@@ -94,7 +96,7 @@ function Create_project() {
                 <input
                   type="date"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)} // Update state
+                  onChange={(e) => setStartDate(e.target.value)}
                   required
                 />
               </div>
@@ -103,7 +105,7 @@ function Create_project() {
                 <input
                   type="date"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)} // Update state
+                  onChange={(e) => setEndDate(e.target.value)}
                   required
                 />
               </div>
@@ -113,9 +115,23 @@ function Create_project() {
               <textarea
                 rows="4"
                 value={projectDescription}
-                onChange={(e) => setProjectDescription(e.target.value)} // Update state
+                onChange={(e) => setProjectDescription(e.target.value)}
                 required
               />
+            </div>
+            <div className="form-group">
+              <label>Assign to Team</label>
+              <select
+                name="team"
+                value={assignedTeam}
+                onChange={(e) => setAssignedTeam(e.target.value)}
+                required
+              >
+                <option value="">— Select a team —</option>
+                <option value="Team Alpha">Team Alpha</option>
+                <option value="Team Beta">Team Beta</option>
+                <option value="Team Gamma">Team Gamma</option>
+              </select>
             </div>
             <button type="submit" className="button" disabled={loading}>
               {loading ? 'Creating...' : 'Create'}

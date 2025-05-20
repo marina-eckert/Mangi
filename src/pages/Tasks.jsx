@@ -5,9 +5,14 @@ import { useNavigate } from 'react-router-dom';
 import '../assets/css/style.css';
 
 function Tasks() {
-  const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState({
+    title: '',
+    user: 'Alice',
+    status: 'To Do',
+    subtasks: [''],
+  });
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -25,8 +30,47 @@ function Tasks() {
     fetchTasks();
   }, []);
 
-  const handleCreateTask = () => {
-    navigate('/create_task');
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubtaskChange = (index, value) => {
+    const updated = [...formData.subtasks];
+    updated[index] = value;
+    setFormData(prev => ({ ...prev, subtasks: updated }));
+  };
+
+  const addSubtask = () => {
+    setFormData(prev => ({ ...prev, subtasks: [...prev.subtasks, ''] }));
+  };
+
+  const removeSubtask = (index) => {
+    const updated = formData.subtasks.filter((_, i) => i !== index);
+    setFormData(prev => ({ ...prev, subtasks: updated }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const newTask = {
+      taskTitle: formData.title,
+      assignedTo: formData.user,
+      status: formData.status,
+      subtasks: formData.subtasks.filter(sub => sub.trim() !== ''),
+    };
+
+    try {
+      const response = await fetch('http://localhost:5000/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTask),
+      });
+      const result = await response.json();
+      setTasks(prev => [...prev, result]);
+      setFormData({ title: '', user: 'Alice', status: 'To Do', subtasks: [''] });
+    } catch (error) {
+      console.error('Error creating task:', error);
+    }
   };
 
   if (loading) {
@@ -38,32 +82,33 @@ function Tasks() {
       <Header />
       <Sidebar />
       <div className="content">
+
         <div className="section">
           <h2 className="section-title">My Tasks</h2>
-          <div className="tasks">
-            {['To Do', 'In Progress', 'Done'].map((status) => (
-              <div key={status}>
-                <div className="progress">{status}</div>
-                {tasks
-                  .filter((task) => task.status === status)
-                  .map((task) => (
+          <div className="task-columns">
+            {['To Do', 'In Progress', 'Done'].map(status => (
+              <div key={status} className="column" data-status={status}>
+                <h3>{status}</h3>
+                <div className="cards-container">
+                  {tasks.filter(t => t.status === status).map(task => (
                     <div className="card" key={task._id}>
-                      {task.taskTitle}
+                      <strong>{task.taskTitle}</strong>
+                      {task.subtasks && task.subtasks.length > 0 && (
+                        <ul style={{ margin: '0.5rem 0' }}>
+                          {task.subtasks.map((sub, i) => <li key={i}>{sub}</li>)}
+                        </ul>
+                      )}
                       <div className="more">⋮</div>
                     </div>
                   ))}
+                </div>
               </div>
             ))}
-            <button
-              className="button"
-              style={{ fontSize: '1.5rem', margin: '1rem auto', display: 'block' }}
-              onClick={handleCreateTask}
-            >
-              ＋ New Task
-            </button>
           </div>
         </div>
       </div>
+
+      {/* Modal can go here if implemented later */}
     </div>
   );
 }

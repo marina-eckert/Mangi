@@ -10,11 +10,29 @@ function Create_task() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
+  const [assignedProject, setAssignedProject] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
+  const [status, setStatus] = useState('To Do');
+  const [subtasks, setSubtasks] = useState(['']);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const navigate = useNavigate();
+
+  const handleSubtaskChange = (index, value) => {
+    const updated = [...subtasks];
+    updated[index] = value;
+    setSubtasks(updated);
+  };
+
+  const addSubtask = () => {
+    setSubtasks(prev => [...prev, '']);
+  };
+
+  const removeSubtask = (index) => {
+    const updated = subtasks.filter((_, i) => i !== index);
+    setSubtasks(updated);
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -31,6 +49,9 @@ function Create_task() {
       endDate,
       taskDescription,
       assignedTo,
+      assignedProject,
+      status,
+      subtasks: subtasks.filter(sub => sub.trim() !== ''),
     };
 
     setLoading(true);
@@ -52,6 +73,9 @@ function Create_task() {
         setEndDate('');
         setTaskDescription('');
         setAssignedTo('');
+        setAssignedProject('');
+        setStatus('To Do');
+        setSubtasks(['']);
       } else {
         setError('Failed to create task');
       }
@@ -133,6 +157,63 @@ function Create_task() {
                 required
               />
             </div>
+            <div className="form-group">
+              <label>Assign to Project</label>
+              <select
+                name="project"
+                value={assignedProject}
+                onChange={(e) => setAssignedProject(e.target.value)}
+              >
+                <option value="">— None —</option>
+                <option value="Project 1">Project 1</option>
+                <option value="Project 2">Project 2</option>
+                <option value="Project 3">Project 3</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Status</label>
+              <select
+                name="status"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+              >
+                <option>To Do</option>
+                <option>In Progress</option>
+                <option>Done</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Subtasks</label>
+              <div id="subtasks-container">
+                {subtasks.map((subtask, index) => (
+                  <div key={index} className="subtask-input">
+                    <input
+                      type="text"
+                      placeholder="Subtask"
+                      value={subtask}
+                      onChange={(e) => handleSubtaskChange(index, e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="remove-subtask"
+                      onClick={() => removeSubtask(index)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                id="add-subtask"
+                className="button"
+                onClick={addSubtask}
+              >
+                ＋ Add Subtask
+              </button>
+            </div>
+
             <button type="submit" className="button" disabled={loading}>
               {loading ? 'Creating...' : 'Create Task'}
             </button>
