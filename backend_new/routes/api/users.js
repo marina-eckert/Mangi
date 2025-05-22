@@ -71,12 +71,18 @@ router.post('/register', validateRegisterInput, async (req, res, next) => {
 
 // Login a user
 router.post('/login', validateLoginInput, async (req, res, next) => {
-  passport.authenticate('local', async (err, user) => {
+  console.log('Login request body:', req.body);
+
+  passport.authenticate('local', async (err, user, info) => {
+    console.log('Auth error:', err);
+    console.log('Auth info:', info);
+    console.log('User:', user);
+
     if (err) return next(err);
     if (!user) {
       const err = new Error('Invalid credentials');
       err.statusCode = 400;
-      err.errors = { email: "Invalid credentials" };
+      err.errors = { username: "Invalid credentials" };
       return next(err);
     }
     return res.json(await loginUser(user));

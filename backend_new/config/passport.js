@@ -11,19 +11,20 @@ const { Strategy: JwtStrategy, ExtractJwt } = require('passport-jwt');
 // console.log(secretOrKey, "SECRET KEY");
 
 passport.use(new LocalStrategy({
-    session: false,
-    usernameField: 'email',
-    passwordField: 'password',
-  }, async function (email, password, done) {
-    const user = await User.findOne({ email });
-    if (user) {
-      bcrypt.compare(password, user.hashedPassword, (err, isMatch) => {
-        if (err || !isMatch) done(null, false);
-        else done(null, user);
-      });
-    } else
-      done(null, false);
-  }));
+  session: false,
+  usernameField: 'username',
+  passwordField: 'password',
+}, async function (username, password, done) {
+  const user = await User.findOne({ username }); // not email
+  if (user) {
+    bcrypt.compare(password, user.hashedPassword, (err, isMatch) => {
+      if (err || !isMatch) done(null, false);
+      else done(null, user);
+    });
+  } else {
+    done(null, false);
+  }
+}));
 
 const options = {};
 options.jwtFromRequest = ExtractJwt.fromAuthHeaderAsBearerToken();

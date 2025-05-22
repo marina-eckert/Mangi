@@ -3,7 +3,6 @@ const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
-const cors = require('cors');
 const { isProduction } = require('./config/keys');
 const csurf = require('csurf');
 const debug = require('debug');
@@ -13,58 +12,64 @@ require('./models/Project');
 require('./config/passport');
 const passport = require('passport');
 
-const usersRouter = require('./routes/api/users');
+const authRouter = require('./routes/api/users');
 const csrfRouter = require('./routes/api/csrf');
 const projectsRouter = require('./routes/api/projects');
 const notificationsRouter = require('./routes/api/notifications');
 
+const cors = require('cors');
+
 const app = express();
-const server = require('http').createServer(app);
+
+// Middleware order matters:
 
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-app.use(passport.initialize());
-
+// CORS setup (only once)
 if (!isProduction) {
-  app.use(cors());
+  app.use(cors({
+    origin: 'http://localhost:5173',
+    credentials: true
+  }));
 }
 
+app.use(passport.initialize());
+
+// CSRF middleware setup
 app.use(
   csurf({
     cookie: {
       secure: isProduction,
-      sameSite: isProduction && "Lax",
+      sameSite: isProduction ? 'Lax' : false,
       httpOnly: true
     }
   })
 );
 
-app.use('/api/users', usersRouter);
+// Routes
 app.use('/api/csrf', csrfRouter);
+app.use('/api/auth', authRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/notifications', notificationsRouter);
 
 if (isProduction) {
   app.get('/', (req, res) => {
     res.cookie('CSRF-TOKEN', req.csrfToken());
-    res.sendFile(
-      path.resolve(__dirname, '../frontend', 'build', 'index.html')
-    );
+    res.sendFile(path.resolve(__dirname, '../frontend', 'build', 'index.html'));
   });
 
-  app.use(express.static(path.resolve("../frontend/build")));
+  app.use(express.static(path.resolve(__dirname, '../frontend/build')));
 
   app.get(/^(?!\/?api).*/, (req, res) => {
     res.cookie('CSRF-TOKEN', req.csrfToken());
-    res.sendFile(
-      path.resolve(__dirname, '../frontend', 'build', 'index.html')
-    );
+    res.sendFile(path.resolve(__dirname, '../frontend', 'build', 'index.html'));
   });
 }
 
+// 404 handler
 app.use((req, res, next) => {
   const err = new Error('Not Found');
   err.statusCode = 404;
@@ -73,6 +78,7 @@ app.use((req, res, next) => {
 
 const serverErrorLogger = debug('backend:error');
 
+// Error handler
 app.use((err, req, res, next) => {
   serverErrorLogger(err);
   const statusCode = err.statusCode || 500;
@@ -85,6 +91,6 @@ app.use((err, req, res, next) => {
 });
 
 module.exports = {
-  app: app,
-  server: server
+  app,
+  server: require('http').createServer(app)
 };

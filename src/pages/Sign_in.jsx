@@ -13,21 +13,34 @@ const Sign_in = () => {
   const handlePasswordChange = (e) => setPassword(e.target.value);
   const handleRememberMeChange = () => setRememberMe(!rememberMe);
 
+  function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    if (match) return match[2];
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      await fetch('http://localhost:5000/api/csrf/restore', {
+        credentials: 'include'
+      });
+
       const res = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': getCookie('CSRF-TOKEN')
+        },
+        credentials: 'include',
         body: JSON.stringify({ username, password })
       });
+
       const data = await res.json();
       if (res.ok) {
         localStorage.setItem('token', data.token);
-
         navigate('/dashboard');
       } else {
-        alert(data.msg);
+        alert(data.msg || 'Login failed');
       }
     } catch (err) {
       console.error(err);
@@ -48,6 +61,7 @@ const Sign_in = () => {
               placeholder="Enter your user name"
               value={username}
               onChange={handleUsernameChange}
+              required
             />
           </div>
           <div className="form-group">
@@ -58,6 +72,7 @@ const Sign_in = () => {
               placeholder="Enter your Password"
               value={password}
               onChange={handlePasswordChange}
+              required
             />
             <span className="toggle-password">👁</span>
           </div>
@@ -72,11 +87,7 @@ const Sign_in = () => {
             </label>
             <a href="#">Forgot Password?</a>
           </div>
-          <button
-            type="submit"
-            className="button"
-           
-          >
+          <button type="submit" className="button">
             Login
           </button>
         </form>

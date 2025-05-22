@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
-import bgImage from '../assets/images/bg-pattern.jpg'; // adjust the path if needed
+import bgImage from '../assets/images/bg-pattern.jpg';
 import '../assets/css/style.css';
+
+function getCookie(name) {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  if (match) return match[2];
+}
 
 const Sign_up = () => {
   const [form, setForm] = useState({
@@ -16,17 +21,35 @@ const Sign_up = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (form.password !== form.confirmPassword) {
+      alert('Passwords do not match');
+      return;
+    }
+
     try {
+      await fetch('http://localhost:5000/api/csrf/restore', {
+        credentials: 'include'
+      });
+
       const res = await fetch('http://localhost:5000/api/auth/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': getCookie('CSRF-TOKEN')
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: form.email,
+          username: form.username,
+          password: form.password
+        })
       });
+
       const data = await res.json();
       if (res.ok) {
         alert('Registration successful');
       } else {
-        alert(data.msg);
+        alert(data.errors?.email || data.message || 'Registration error');
       }
     } catch (err) {
       console.error(err);
@@ -96,10 +119,7 @@ const Sign_up = () => {
             />
             <span className="toggle-password">👁</span>
           </div>
-          <button
-            type="submit"
-            className="button"
-          >
+          <button type="submit" className="button">
             Register
           </button>
         </form>
