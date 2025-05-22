@@ -11,12 +11,6 @@ const validateLoginInput = require('../../validations/login');
 
 // Get current logged-in user
 router.get('/current', restoreUser, (req, res) => {
-  if (!isProduction) {
-    // Allow React dev server to get CSRF token
-    const csrfToken = req.csrfToken();
-    res.cookie("CSRF-TOKEN", csrfToken);
-  }
-
   if (!req.user) return res.json(null);
 
   res.json({
@@ -71,17 +65,32 @@ router.post('/register', validateRegisterInput, async (req, res, next) => {
 
 // Login a user
 router.post('/login', validateLoginInput, async (req, res, next) => {
-  passport.authenticate('local', async (err, user) => {
-    if (err) return next(err);
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
     if (!user) {
-      const err = new Error('Invalid credentials');
+      const err = new Error("Invalid credentials");
       err.statusCode = 400;
-      err.errors = { email: "Invalid credentials" };
+      err.errors = { message: "Invalid credentials" };
       return next(err);
     }
+
+    const isMatch = await bcrypt.compare(password, user.hashedPassword);
+    if (!isMatch) {
+      const err = new Error("Invalid credentials");
+      err.statusCode = 400;
+      err.errors = { message: "Invalid credentials" };
+      return next(err);
+    }
+
     return res.json(await loginUser(user));
-  })(req, res, next);
+
+  } catch (err) {
+    return next(err);
+  }
 });
+
 
 // Get all users (requires auth)
 router.get('/', requireUser, async (req, res, next) => {

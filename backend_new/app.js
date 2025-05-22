@@ -14,7 +14,6 @@ require('./config/passport');
 const passport = require('passport');
 
 const usersRouter = require('./routes/api/users');
-const csrfRouter = require('./routes/api/csrf');
 const projectsRouter = require('./routes/api/projects');
 const notificationsRouter = require('./routes/api/notifications');
 
@@ -32,38 +31,19 @@ if (!isProduction) {
   app.use(cors());
 }
 
-app.use(
-  csurf({
-    cookie: {
-      secure: isProduction,
-      sameSite: isProduction && "Lax",
-      httpOnly: true
-    }
-  })
-);
+// app.use(
+//   csurf({
+//     cookie: {
+//       secure: isProduction,
+//       sameSite: isProduction && "Lax",
+//       httpOnly: true
+//     }
+//   })
+// );
 
 app.use('/api/users', usersRouter);
-app.use('/api/csrf', csrfRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/notifications', notificationsRouter);
-
-if (isProduction) {
-  app.get('/', (req, res) => {
-    res.cookie('CSRF-TOKEN', req.csrfToken());
-    res.sendFile(
-      path.resolve(__dirname, '../frontend', 'build', 'index.html')
-    );
-  });
-
-  app.use(express.static(path.resolve("../frontend/build")));
-
-  app.get(/^(?!\/?api).*/, (req, res) => {
-    res.cookie('CSRF-TOKEN', req.csrfToken());
-    res.sendFile(
-      path.resolve(__dirname, '../frontend', 'build', 'index.html')
-    );
-  });
-}
 
 app.use((req, res, next) => {
   const err = new Error('Not Found');

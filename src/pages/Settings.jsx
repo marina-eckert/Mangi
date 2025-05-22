@@ -6,15 +6,13 @@ import '../assets/css/style.css';
 function Settings() {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
       const token = localStorage.getItem('token');
 
       try {
-        const response = await fetch('http://localhost:5000/api/auth/me', {
+        const response = await fetch('http://localhost:5000/api/users/current', {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -46,7 +44,7 @@ function Settings() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ email, username, password }),
+        body: JSON.stringify({ email, username }),
       });
 
       const data = await response.json();
@@ -82,24 +80,6 @@ function Settings() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
-            </div>
-            <div className="form-group">
-              <label>Change Password</label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="New Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <span
-                  className="toggle-password-settings"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  style={{ position: 'absolute', right: '10px', top: '50%', cursor: 'pointer', transform: 'translateY(-50%)' }}
-                >
-                  👁
-                </span>
-              </div>
             </div>
             <button type="submit" className="button">
               Save Changes

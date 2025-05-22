@@ -3,23 +3,23 @@ import '../assets/css/style.css';
 import { useNavigate } from 'react-router-dom';
 
 const Sign_in = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
 
   const navigate = useNavigate();
 
-  const handleUsernameChange = (e) => setUsername(e.target.value);
+  const handleEmailChange = (e) => setEmail(e.target.value);
   const handlePasswordChange = (e) => setPassword(e.target.value);
   const handleRememberMeChange = () => setRememberMe(!rememberMe);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const res = await fetch('http://localhost:5000/api/users/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ email, password })
       });
       const data = await res.json();
       if (res.ok) {
@@ -41,13 +41,13 @@ const Sign_in = () => {
         <h2>Sign in</h2>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="signin-username">User name</label>
+            <label htmlFor="signin-username">Email</label>
             <input
               id="signin-username"
               type="text"
-              placeholder="Enter your user name"
-              value={username}
-              onChange={handleUsernameChange}
+              placeholder="Enter your email"
+              value={email}
+              onChange={handleEmailChange}
             />
           </div>
           <div className="form-group">
