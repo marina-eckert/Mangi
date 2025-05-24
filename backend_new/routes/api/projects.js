@@ -197,27 +197,11 @@ router.post('/', requireUser, async (req, res) => {
 // Update a project
 router.patch('/:projectId', requireUser, async (req, res) => {
   const { projectId } = req.params;
-  const incomingCollaborators = req.body.collaborators?.sort();
 
   try {
     const project = await Project.findById(projectId);
     if (!project || !userOnProject(project, req.user._id)) {
       return res.status(403).json({ message: "Access denied" });
-    }
-
-    if (incomingCollaborators) {
-      const prior = project.collaborators.map(c => c.toString()).sort();
-      if (!stringifyCompare(prior, incomingCollaborators)) {
-        await User.updateMany(
-          { _id: { $in: prior.filter(c => !incomingCollaborators.includes(c)) } },
-          { $pull: { projects: projectId } }
-        );
-
-        await User.updateMany(
-          { _id: { $in: incomingCollaborators.filter(c => !prior.includes(c)) } },
-          { $addToSet: { projects: projectId } }
-        );
-      }
     }
 
     Object.assign(project, req.body);

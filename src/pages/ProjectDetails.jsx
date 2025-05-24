@@ -16,6 +16,7 @@ function ProjectDetails() {
     assignee: '',
     subtasks: []
   });
+  const [criticalActivities, setCriticalActivities] = useState([]);
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -388,6 +389,108 @@ function ProjectDetails() {
     return flatList;
   };
 
+  function flattenLeafTasks(tasks, parentId = null) {
+    const leaves = [];
+    function helper(taskList, parent) {
+      taskList.forEach((task, idx) => {
+        if (!task.subtasks || task.subtasks.length === 0) {
+          leaves.push({
+            id: task._id || `temp-${Math.random()}`,
+            title: task.title,
+            start: new Date(task.startDate),
+            end: new Date(task.endDate),
+            duration: (new Date(task.endDate) - new Date(task.startDate)) / (1000 * 60 * 60 * 24),
+            dependencies: [],
+            index: leaves.length,
+          });
+        } else {
+          helper(task.subtasks, task);
+        }
+      });
+    }
+    helper(tasks, null);
+
+    for (let i = 1; i < leaves.length; i++) {
+      leaves[i].dependencies.push(leaves[i - 1].id);
+    }
+
+    return leaves;
+  }
+
+  // Compute critical path for leaf activities using CPM (Critical Path Method)
+  function calculateCriticalPath(activities) {
+    // Map id -> activity
+    const actMap = {};
+    activities.forEach(act => (actMap[act.id] = { ...act, ES: 0, EF: 0, LS: Infinity, LF: Infinity, slack: 0 }));
+
+    // Step 1: Forward pass to calculate ES and EF
+    function forwardPass() {
+      activities.forEach(act => {
+        if (act.dependencies.length === 0) {
+          actMap[act.id].ES = 0;
+          actMap[act.id].EF = act.duration;
+        } else {
+          actMap[act.id].ES = Math.max(
+            ...act.dependencies.map(depId => actMap[depId].EF)
+          );
+          actMap[act.id].EF = actMap[act.id].ES + act.duration;
+        }
+      });
+    }
+
+    // Step 2: Backward pass to calculate LS and LF
+    function backwardPass() {
+      // Get max EF (project finish time)
+      const maxEF = Math.max(...activities.map(act => actMap[act.id].EF));
+
+      // Initialize LF of tasks with no dependents to maxEF
+      activities.forEach(act => {
+        const hasDependents = activities.some(a => a.dependencies.includes(act.id));
+        if (!hasDependents) {
+          actMap[act.id].LF = maxEF;
+          actMap[act.id].LS = maxEF - act.duration;
+        }
+      });
+
+      // Iterate backward until LS and LF stabilize
+      let changed;
+      do {
+        changed = false;
+        activities.forEach(act => {
+          const dependents = activities.filter(a => a.dependencies.includes(act.id));
+          if (dependents.length > 0) {
+            const minLS = Math.min(...dependents.map(d => actMap[d.id].LS));
+            if (minLS - act.duration < actMap[act.id].LS) {
+              actMap[act.id].LF = minLS;
+              actMap[act.id].LS = minLS - act.duration;
+              changed = true;
+            }
+          }
+        });
+      } while (changed);
+    }
+
+    forwardPass();
+    backwardPass();
+
+    // Step 3: Calculate slack and mark critical activities
+    activities.forEach(act => {
+      const a = actMap[act.id];
+      a.slack = a.LS - a.ES;
+      a.isCritical = a.slack === 0;
+    });
+
+    return Object.values(actMap);
+  }
+
+  useEffect(() => {
+    if (project?.tasks) {
+      const leafActivities = flattenLeafTasks(project.tasks);
+      const crits = calculateCriticalPath(leafActivities);
+      setCriticalActivities(crits);
+    }
+  }, [project]);
+
   return (
       <div className="project-details">
         <h2>{project?.title}</h2>
@@ -447,6 +550,15 @@ function ProjectDetails() {
             </ul>
           ) : <p>No tasks yet.</p>}
         </div>
+        <h3>Critical and Non-Critical Activities</h3>
+        <ul>
+          {criticalActivities.map(act => (
+            <li key={act.id} style={{ color: act.isCritical ? 'red' : 'green' }}>
+              {act.title} — Start: {act.start.toLocaleDateString()}, End: {act.end.toLocaleDateString()} — 
+              {act.isCritical ? 'Critical' : 'Non-critical'} (Slack: {act.slack.toFixed(2)} days)
+            </li>
+          ))}
+        </ul>
         {!loadingProject && project && project.tasks && project.tasks.length > 0 && (
           <Gantt
             tasks={convertTasksToGantt(project.tasks)}
