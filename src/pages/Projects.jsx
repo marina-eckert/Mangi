@@ -39,9 +39,14 @@ function Projects() {
         <div className="section">
           <h2 className="section-title">My Projects</h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-            {projects.map((project, index) => (
-              <div key={index} className="card">
-                {project.name}
+            {projects.map((project) => (
+              <div
+                key={project._id}
+                className="card"
+                style={{ cursor: 'pointer' }}
+                onClick={() => navigate(`/projects/${project._id}`)}
+              >
+                {project.title}
                 <div className="more">⋮</div>
               </div>
             ))}

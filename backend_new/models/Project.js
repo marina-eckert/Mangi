@@ -12,10 +12,6 @@ TaskSchema.add({
   },
   description: String,
   priority: String,
-  assignee: {
-    type: Schema.Types.ObjectId,
-    ref: 'User'
-  },
   status: String,
   startDate: {
     type: Date,
@@ -32,42 +28,28 @@ TaskSchema.add({
     }
   },
   progress: Number,
-  blockingTasks: [{
-    type: Schema.Types.ObjectId,
-    ref: 'Task'
-  }],
-  subtasks: [TaskSchema]  // ✅ Recursive definition here
+  subtasks: [TaskSchema]
 });
 
 const projectSchema = new Schema({
-        title: {
-            type: String,
-            required: true
-        },
-        description: {
-            type: String,
-            required: false
-        },
-        adminId: {
-            type: Schema.Types.ObjectId,
-            ref: 'User',
-            required: true
-        }, 
-        collaborators: [{
-            type: Schema.Types.ObjectId,
-            ref: 'User',
-            required: false
-        }],
-        tasks: [TaskSchema],
-        startDate: {
-            type: Date,
-            required: true
-        },
-        endDate: {
-            type: Date,
-            required: false
-        }
-    }, {timestamps: true}
+      title: {
+          type: String,
+          required: true
+      },
+      description: {
+          type: String,
+          required: false
+      },
+      tasks: [TaskSchema],
+      startDate: {
+          type: Date,
+          required: true
+      },
+      endDate: {
+          type: Date,
+          required: false
+      }
+  }, {timestamps: true}
 );
 
 module.exports = {

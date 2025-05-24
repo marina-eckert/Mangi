@@ -26,17 +26,13 @@ function validateSubtasks(subtasks, project) {
   return true;
 }
 
-// Get a project
-router.get('/:projectid', requireUser, async (req, res) => {
-  const projectId = req.params.projectid;
-
+router.get('/', requireUser, async (req, res) => {
   try {
-    const project = await Project.findById(projectId);
-    if (!project || !userOnProject(project, req.user._id)) {
-      return res.status(404).json({ message: "No Project Found" });
-    }
 
-    const projectData = {
+    const projects = await Project.find({
+    });
+
+    const projectsData = projects.map(project => ({
       _id: project._id,
       title: project.title,
       description: project.description,
@@ -45,6 +41,32 @@ router.get('/:projectid', requireUser, async (req, res) => {
       endDate: project.endDate,
       tasks: project.tasks,
       collaborators: project.collaborators
+    }));
+
+    return res.json(projectsData);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get a project
+router.get('/:projectid', requireUser, async (req, res) => {
+  const projectId = req.params.projectid;
+
+  try {
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: "No Project Found" });
+    }
+
+    const projectData = {
+      _id: project._id,
+      title: project.title,
+      description: project.description,
+      startDate: project.startDate,
+      endDate: project.endDate,
+      tasks: project.tasks
     };
 
     return res.json({ [project._id]: projectData });
@@ -59,7 +81,7 @@ router.get('/:projectId/tasks', requireUser, async (req, res) => {
 
   try {
     const project = await Project.findById(projectId);
-    if (!project || !userOnProject(project, req.user._id)) {
+    if (!project) {
       return res.status(404).json({ message: 'Project not found or access denied' });
     }
 
@@ -73,86 +95,41 @@ router.get('/:projectId/tasks', requireUser, async (req, res) => {
 // Create a new task
 router.post('/:projectId/tasks', requireUser, async (req, res) => {
   const { projectId } = req.params;
-  const { assignee, blockingTasks } = req.body;
-
+  
   try {
     const project = await Project.findById(projectId);
-    if (!project || !userOnProject(project, req.user._id)) {
-      return res.status(403).json({ message: "Access denied" });
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
     }
 
-    if (assignee) {
-      const user = await User.findById(assignee);
-      if (!user || !userOnProject(project, assignee) || !user.projects.includes(projectId)) {
-        return res.status(403).json({ message: "Invalid assignee" });
-      }
-    }
+    // Create new task subdocument inside project.tasks
+    const task = project.tasks.create(req.body);
 
-    const task = project.tasks.create(req.body); // safer subdoc creation
-
-    if (blockingTasks?.length) {
-      if (!blockingTaskCheck(task, project)) {
-        return res.status(400).json({ message: "Invalid blocking tasks" });
-      }
-    }
-    if (!validateSubtasks(req.body.subtasks, project)) {
-      return res.status(400).json({ message: "Invalid subtasks" });
-    }
-    
+    // Push the new task to the project's tasks array
     project.tasks.push(task);
     await project.save();
-    
-    if (assignee) {
-      await User.findByIdAndUpdate(assignee, { $push: { assignedTasks: task._id } });
-    }
-    
+
+    // Return the created task with projectId
     return res.status(201).json({ ...task.toObject(), projectId: project._id });
-        
+
   } catch (error) {
-    return res.status(500).json(error);
+    return res.status(500).json({ message: error.message || 'Server error' });
   }
 });
 
 // Update a task
 router.patch('/:projectId/tasks/:taskId', requireUser, async (req, res) => {
   const { projectId, taskId } = req.params;
-  const { assignee, blockingTasks } = req.body;
-
   try {
     const project = await Project.findById(projectId);
-    if (!project || !userOnProject(project, req.user._id)) {
+    console.log('project: ', project);
+    if (!project) {
       return res.status(403).json({ message: "Access denied" });
     }
 
     const task = project.tasks.id(taskId);
     if (!task) return res.status(404).json({ message: "Task not found" });
 
-    const priorAssignee = task.assignee?.toString();
-
-    if (assignee !== undefined && assignee !== priorAssignee) {
-      if (priorAssignee) {
-        await User.findByIdAndUpdate(priorAssignee, { $pull: { assignedTasks: taskId } });
-      }
-
-      if (assignee) {
-        if (!userOnProject(project, assignee)) {
-          return res.status(403).json({ message: "Invalid new assignee" });
-        }
-        await User.findByIdAndUpdate(assignee, { $addToSet: { assignedTasks: taskId } });
-        task.assignee = assignee;
-      } else {
-        task.assignee = null;
-      }
-    }
-
-    if (blockingTasks !== undefined) {
-      const priorBlocking = task.blockingTasks.map(id => id.toString());
-      const { added } = arrayDiff(priorBlocking, blockingTasks);
-
-      if (added.length && !blockingTaskCheck({ ...task.toObject(), blockingTasks }, project)) {
-        return res.status(400).json({ message: "Invalid blocking tasks" });
-      }
-    }
     if (!validateSubtasks(req.body.subtasks, project)) {
       return res.status(400).json({ message: "Invalid subtasks" });
     }    
@@ -250,6 +227,7 @@ router.patch('/:projectId', requireUser, async (req, res) => {
     return res.status(500).json({ message: "Error updating project", error });
   }
 });
+
 // Add a subtask to a task
 router.post('/:projectId/tasks/:taskId/subtasks', requireUser, async (req, res) => {
   try {
@@ -315,4 +293,5 @@ router.delete('/:projectId/tasks/:taskId/subtasks/:subtaskId', requireUser, asyn
     return res.status(500).json({ message: "Failed to delete subtask", error: err });
   }
 });
+
 module.exports = router;

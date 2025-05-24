@@ -15,6 +15,7 @@ import Teams from './pages/Teams';
 import Sign_in from './pages/Sign_in';
 import Sign_up from './pages/Sign_up';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import ProjectDetails from './pages/ProjectDetails';
 
 function App() {
 
@@ -33,6 +34,7 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/projects" element={<Projects />} />
+          <Route path="/projects/:projectId" element={<ProjectDetails />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/teams" element={<Teams />} /> 
           <Route path="/sign_in" element={<Sign_in />} /> 

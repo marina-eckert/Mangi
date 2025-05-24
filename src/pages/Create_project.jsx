@@ -5,12 +5,11 @@ import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 
 function Create_project() {
-  const [projectTitle, setProjectTitle] = useState('');
-  const [projectType, setProjectType] = useState('');
+  const [title, setTitle] = useState('');
+  const [type, setType] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [projectDescription, setProjectDescription] = useState('');
-  const [assignedTeam, setAssignedTeam] = useState('');
+  const [description, setDescription] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
@@ -22,12 +21,11 @@ function Create_project() {
     setLoading(true);
 
     const projectData = {
-      projectTitle,
-      projectType,
+      title,
+      type,
       startDate,
       endDate,
-      projectDescription,
-      assignedTeam,
+      description
     };
 
     try {
@@ -75,8 +73,8 @@ function Create_project() {
               <input
                 type="text"
                 placeholder="Project Title"
-                value={projectTitle}
-                onChange={(e) => setProjectTitle(e.target.value)} 
+                value={title}
+                onChange={(e) => setTitle(e.target.value)} 
                 required
               />
             </div>
@@ -85,8 +83,8 @@ function Create_project() {
               <input
                 type="text"
                 placeholder="Project Type"
-                value={projectType}
-                onChange={(e) => setProjectType(e.target.value)}
+                value={type}
+                onChange={(e) => setType(e.target.value)}
                 required
               />
             </div>
@@ -114,24 +112,10 @@ function Create_project() {
               <label>Project Description</label>
               <textarea
                 rows="4"
-                value={projectDescription}
-                onChange={(e) => setProjectDescription(e.target.value)}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
                 required
               />
-            </div>
-            <div className="form-group">
-              <label>Assign to Team</label>
-              <select
-                name="team"
-                value={assignedTeam}
-                onChange={(e) => setAssignedTeam(e.target.value)}
-                required
-              >
-                <option value="">— Select a team —</option>
-                <option value="Team Alpha">Team Alpha</option>
-                <option value="Team Beta">Team Beta</option>
-                <option value="Team Gamma">Team Gamma</option>
-              </select>
             </div>
             <button type="submit" className="button" disabled={loading}>
               {loading ? 'Creating...' : 'Create'}
