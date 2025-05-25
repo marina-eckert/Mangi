@@ -12,3 +12,4 @@ const validateTaskInput = [
         .withMessage('Progress must be an integer between 0 and 100 inclusive.'),
     handleValidationErrors
 ]
+

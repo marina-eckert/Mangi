@@ -1,0 +1,126 @@
+.projects-tree-page {
+  padding: 1rem;
+  font-family: sans-serif;
+  background: #f5f6f8;
+}
+
+.projects-tree-page h2 {
+  margin-bottom: 0 rem;
+  color: #1f2937;
+}
+
+
+.tree-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3rem;
+}
+
+/* Each project column */
+.tree-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Generic node styling */
+.node {
+  background: #ffffff;
+  padding: 0.5rem 1rem;
+  border-radius: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  color: #1f2937;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  margin-bottom: 0rem;
+}
+
+/* Connectors: vertical/horizontal lines */
+.connector {
+  background: #cbd5e1;
+}
+
+.connector.vertical {
+  width: 2px;
+  height: 30px;
+}
+
+.connector.horizontal {
+  height: 2px;
+  width: 20px;
+  margin: 0 rem 0;
+  top: 17%;
+  
+}
+
+/* shorten the small vertical connector immediately above the horizontal line */
+.connector.vertical.short {
+  height: 40px;
+}
+
+
+/* Task layer */
+.children {
+  display: flex;
+  border-radius: 0px !important; 
+  gap: 1.5rem;
+}
+
+.tree-subcol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Subtask layer */
+.grandchildren {
+  display: flex;
+  gap: 0rem;
+  margin-top: 0rem;
+}
+
+
+.tree-col {
+  position: relative;     /* needed for the sibling connector */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* make project nodes red */
+.project-node {
+  background: #ef4444;
+  color: #fff;
+  border-radius: 12px !important; 
+}
+
+.child-node {
+  border-radius: 0px;
+}
+
+/* draw a full horizontal line above the tasks */
+.children {
+  position: relative;
+  display: flex;
+  border-radius: 0px !important; 
+  gap: 1.5rem;
+  margin-top: 0 rem;
+  z-index: 1;
+}
+.children::before {
+  content: "";
+  position: absolute;
+  border-radius: 0px !important; 
+  top: 17%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #cbd5e1;
+  z-index: -1;    
+  /* If you want it inset, you can add margin-left/right */
+}
+
+.project-node {
+  background: #ef4444;  /* your red of choice */
+  color: #fff;
+}

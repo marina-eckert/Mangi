@@ -81,8 +81,10 @@ header .nav-icons {
 
 
 .sidebar {
-  width: 240px;
-  background: #fff;
+  top: 180px; 
+  width: 65px !important;          /* slimmer */
+  background: #0f1a43;  /* dark navy blue */
+  color:  #9f9e9e30;
   height: 100vh;
   position: fixed;
   top: 0;
@@ -91,6 +93,7 @@ header .nav-icons {
   box-shadow: 1px 0 3px rgba(0, 0, 0, 0.1);
   overflow: auto;
   transition: transform .3s ease;
+  /* z-index: 100;   */
 }
 .sidebar.hide {
   transform: translateX(-100%);
@@ -526,3 +529,152 @@ header .nav-icons {
   margin-bottom: .25rem;
   font-size: .85rem;
 }
+
+/* ---------- Calendar overrides (put at end of style.css) ---------- */
+
+.calendar-card {
+  border: none;
+  box-shadow: none;
+}
+
+.react-calendar {
+  width: 100%;
+  background: #ffffff;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 16px;
+  padding: 0px;
+  padding-left: 22px;
+  
+}
+
+/* Navigation bar: month/year + arrows */
+.react-calendar__navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.react-calendar__navigation__label {
+  font-size: 1.25rem;        /* bigger month name */
+  font-weight: 700;
+  color: #1f2937;            /* dark gray */
+}
+.react-calendar__navigation button {
+  all: unset;                /* remove default button styles */
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  background: #0f1a43;       /* navy */
+  color: #0f1a43;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.react-calendar__navigation button:hover {
+  background: #131c3b;
+}
+
+/* Weekday headings */
+.react-calendar__month-view__weekdays {
+  text-align: center;
+  margin-bottom: 8px;
+}
+.react-calendar__month-view__weekdays__weekday abbr {
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #374151;            /* medium gray */
+  border-bottom: 0px solid #e5e7eb;
+  padding-bottom: 4px;
+}
+
+/* Day tiles */
+.react-calendar__tile {
+  padding: 8px 0;
+  font-size: 0.875rem;
+  color: #374151;            /* medium gray */
+}
+.react-calendar__tile--neighboringMonth {
+  color: #9ca3af;            /* lighter gray for prev/next month */
+}
+.react-calendar__tile--now {
+  background: none;          /* no special styling for “today” if not selected */
+}
+.react-calendar__tile:focus {
+  outline: none;             /* remove focus ring */
+  background: none;
+}
+
+/* Selected day */
+.react-calendar__tile--active {
+  background: #fb923c !important;  /* orange circle */
+  color: white !important;
+  border-radius: 50%;
+}
+
+.projects-tree-page .content {
+  margin-left: 80px;
+  padding: 40px 60px;
+}
+
+.tree-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4rem;
+}
+
+/* Each node’s container */
+.tree-node {
+  position: relative;
+  text-align: center;
+}
+
+/* The white pill-shaped label */
+.node-label {
+  display: inline-block;
+  background: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  font-weight: 500;
+}
+
+/* Vertical line down from the parent label */
+.connector-vertical {
+  width: 2px;
+  height: 1rem;
+  background: #ccc;
+  margin: 0 auto;
+}
+
+/* Container for all children, laid out in a row */
+.children-row {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 2rem;
+  margin-top: 1rem;
+}
+
+/* Wrapper around each child for its horizontal connector */
+.child-wrapper {
+  position: relative;
+}
+
+/* Horizontal line from connector-vertical to child node */
+.connector-horizontal {
+  position: absolute;
+  top: -1.5rem;       /* adjust to meet the vertical line */
+  left: 50%;
+  width: calc(50% - 1px);
+  height: 2px;
+  background: #ccc;
+  transform: translateX(-50%);
+}
+
+/* Ensure the child tree-node sits below its connector */
+.child-wrapper > .tree-node {
+  margin-top: 0.5rem;
+}
+

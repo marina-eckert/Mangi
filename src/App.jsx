@@ -14,6 +14,8 @@ import Tasks from './pages/Tasks';
 import Teams from './pages/Teams';
 import Sign_in from './pages/Sign_in';
 import Sign_up from './pages/Sign_up';
+import ProjectsTree from './pages/ProjectsTree';
+import Temp from './pages/temp';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import ProjectDetails from './pages/ProjectDetails';
 
@@ -37,6 +39,8 @@ function App() {
           <Route path="/projects/:projectId" element={<ProjectDetails />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/teams" element={<Teams />} /> 
+          <Route path="/tree" element={<ProjectsTree />} />
+          <Route path="/temp" element={<Temp />} />
           <Route path="/sign_in" element={<Sign_in />} /> 
           <Route path="/sign_up" element={<Sign_up />} />
         </Routes>

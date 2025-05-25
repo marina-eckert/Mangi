@@ -1,0 +1,99 @@
+/* ---------- global reset ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+}
+
+body {
+  background: #fad7c3; /* peach-50 */
+}
+
+/* ---------- sidebar ---------- */
+.sidebar {
+  top: 80px; 
+  position: fixed;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 50px;
+  /* background: #0f1a43; navy-900 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-block: 24px;
+  gap: 28px;
+  /* z-index: 100;   */
+}
+
+.sidebar a {
+  /* color: #1d358b74; */
+  font-size: 24px;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.sidebar a:hover {
+  opacity: 0.7;
+}
+
+/* ---------- main wrapper ---------- */
+#root main {
+  margin-inline-start: 80px;      /* keep clear of the sidebar */
+  padding: 40px 60px;
+}
+
+/* ---------- cards ---------- */
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 2px rgba(0 0 0 / 6%);
+}
+
+.card + .card {
+  margin-block-start: 24px;
+}
+
+.card-title {
+  font-weight: 600;
+  margin-block-end: 12px;
+}
+
+.badge-today {
+  color: #e2445c;
+  font-size: 14px;
+}
+
+/* simple flex helpers */
+.flex {
+  display: flex;
+}
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+/* ---------- buttons ---------- */
+button,
+.btn {
+  border: none;
+  outline: none;
+  background: #0f1a43;
+  color: white;
+  padding: 6px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+button:hover {
+  opacity: 0.9;
+}

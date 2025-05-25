@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const passport = require('passport');
 const bcrypt = require('bcryptjs');
 const LocalStrategy = require('passport-local');
@@ -25,7 +27,10 @@ passport.use(new LocalStrategy({
       done(null, false);
   }));
 
-const options = {};
+const options = {
+  jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+  secretOrKey: secretOrKey || process.env.JWT_SECRET  // <= last resort
+};
 options.jwtFromRequest = ExtractJwt.fromAuthHeaderAsBearerToken();
 options.secretOrKey = secretOrKey;
 
@@ -70,3 +75,5 @@ passport.use(new JwtStrategy(options, async (jwtPayload, done) => {
   };
 
   exports.requireUser = passport.authenticate('jwt', { session: false });
+
+  console.log('JWT secret loaded:', !!options.secretOrKey);

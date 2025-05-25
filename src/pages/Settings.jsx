@@ -12,7 +12,7 @@ function Settings() {
       const token = localStorage.getItem('token');
 
       try {
-        const response = await fetch('http://localhost:5000/api/users/current', {
+        const response = await fetch('http://localhost:3000/api/users/current', {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -38,7 +38,7 @@ function Settings() {
     const token = localStorage.getItem('token');
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/settings', {
+      const response = await fetch('http://localhost:3000/api/auth/settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

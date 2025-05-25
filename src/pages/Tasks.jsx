@@ -19,7 +19,7 @@ function Tasks() {
       try {
         const token = localStorage.getItem('token');
 
-        const projectsResponse = await fetch('http://localhost:5000/api/projects', {
+        const projectsResponse = await fetch('http://localhost:3000/api/projects', {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
@@ -34,7 +34,7 @@ function Tasks() {
 
         const tasksByProject = await Promise.all(
           projects.map(async (project) => {
-            const tasksResponse = await fetch(`http://localhost:5000/api/projects/${project._id}/tasks`, {
+            const tasksResponse = await fetch(`http://localhost:3000/api/projects/${project._id}/tasks`, {
               headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`,
@@ -93,7 +93,7 @@ function Tasks() {
     };
 
     try {
-      const response = await fetch('http://localhost:5000/api/tasks', {
+      const response = await fetch('http://localhost:3000/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newTask),
@@ -112,7 +112,7 @@ function Tasks() {
 
   return (
     <div>
-      <Header />
+      {/* <Header /> */}
       <Sidebar />
       <div className="content">
 
