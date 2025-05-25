@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { Gantt, ViewMode } from 'gantt-task-react';
 import 'gantt-task-react/dist/index.css';
 import domtoimage from 'dom-to-image';
-import { v4 as uuidv4 } from 'uuid';
+import Sidebar from '../components/Sidebar';
+import { MdHeight, MdAccountTree } from 'react-icons/md';
 
 function ProjectDetails() {
   const { projectId } = useParams();
@@ -37,7 +38,7 @@ function ProjectDetails() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/projects/${projectId}`, {
+      const response = await fetch(`http://localhost:3000/api/projects/${projectId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -65,7 +66,7 @@ function ProjectDetails() {
       setLoadingProject(true);
       const token = localStorage.getItem('token');
       try {
-        const response = await fetch(`http://localhost:5000/api/projects/${projectId}`, {
+        const response = await fetch(`http://localhost:3000/api/projects/${projectId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await response.json();
@@ -100,19 +101,19 @@ function ProjectDetails() {
   };
 
   const addSubtask = (path = []) => {
-    setNewTask(prev => {
-      const clone = JSON.parse(JSON.stringify(prev)); 
-      let current = clone.subtasks;
+  setNewTask(prev => {
+    const clone = JSON.parse(JSON.stringify(prev)); 
+    let current = clone.subtasks;
 
-      for (let i = 0; i < path.length; i++) {
-        current = current[path[i]].subtasks;
-      }
+    for (let i = 0; i < path.length; i++) {
+      current = current[path[i]].subtasks;
+    }
 
-      current.push({ title: '', description: '', startDate: '', endDate: '', subtasks: [] });
+    current.push({ title: '', description: '', startDate: '', endDate: '', subtasks: [] });
 
-      return clone;
-    });
-  };
+    return clone;
+  });
+};
 
   const removeSubtask = (path) => {
     setNewTask(prev => {
@@ -173,7 +174,7 @@ function ProjectDetails() {
   const handleSubmit = async () => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`http://localhost:5000/api/projects/${projectId}/tasks`, {
+      const res = await fetch(`http://localhost:3000/api/projects/${projectId}/tasks`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -221,7 +222,7 @@ function ProjectDetails() {
     try {
       let cleanedTask = cleanTaskForSave(updatedTaskData);
       console.log('json: ', cleanedTask)
-      const response = await fetch(`http://localhost:5000/api/projects/${projectId}/tasks/${taskId}`, {
+      const response = await fetch(`http://localhost:3000/api/projects/${projectId}/tasks/${taskId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -249,24 +250,26 @@ function ProjectDetails() {
   };
 
   const TaskItem = ({ task }) => {
-    return (
-      <li>
-        <h4>{task.title}</h4>
-        <p>{task.description}</p>
-        <p>Start: {new Date(task.startDate).toLocaleDateString()}</p>
-        <p>End: {new Date(task.endDate).toLocaleDateString()}</p>
+  return (
+    <li style={{ listStyleType: 'none', marginLeft: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <MdAccountTree />
+        <h4 style={{ margin: 0 }}>{task.title}</h4>
+      </div>
+      <p>{task.description}</p>
+      <p>Start: {new Date(task.startDate).toLocaleDateString()}</p>
+      <p>End: {new Date(task.endDate).toLocaleDateString()}</p>
 
-        {task.subtasks && task.subtasks.length > 0 && (
-          <ul>
-            {task.subtasks.map((subtask) => (
-              <TaskItem key={subtask._id} task={subtask} />
-            ))}
-          </ul>
-        )}
-      </li>
-    );
-  };
-
+      {task.subtasks && task.subtasks.length > 0 && (
+        <ul style={{ listStyleType: 'none', paddingLeft: '20px' }}>
+          {task.subtasks.map(subtask => (
+            <TaskItem key={subtask._id} task={subtask} />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+};
   const TaskItemEditor = ({
     task,
     onChange,
@@ -279,12 +282,13 @@ function ProjectDetails() {
   }) => {
 
     const possibleDependencies = allTasks.filter(t => t._id !== task._id);
-    const currentDependencies = task.dependencies || [];
 
     const handleDependenciesChange = (e) => {
       const selectedOptions = Array.from(e.target.selectedOptions).map(o => o.value);
       onChange({ ...task, dependencies: selectedOptions });
     };
+
+    const currentDependencies = task.dependencies || [];
 
     const handleFieldChange = (e) => {
       const { name, value } = e.target;
@@ -327,8 +331,8 @@ function ProjectDetails() {
           _id: `temp-${Date.now()}`,
           title: '',
           description: '',
-          startDate: task.startDate,
-          endDate:  task.endDate,
+          startDate: '',
+          endDate: '',
           subtasks: []
         }
       ];
@@ -381,27 +385,13 @@ function ProjectDetails() {
           max={maxDate}
         />
         
-        <div style={{ marginTop: '8px' }}>
-          <label>Dependencies:</label>
-          <select
-            multiple
-            value={currentDependencies}
-            onChange={handleDependenciesChange}
-          >
-            {possibleDependencies.map(dep => (
-              <option key={dep._id} value={dep._id}>
-                {dep.title}
-              </option>
-            ))}
-          </select>
-        </div>
         <button type="button" onClick={addSubtask}>Add Subtask</button>
         {!isSubtask && (
           <button type="button" onClick={handleSave} style={{ marginLeft: '10px' }}>Save</button>
         )}
 
         {(task.subtasks || []).map((subtask, i) => (
-          <div key={uuidv4()}>
+          <div key={subtask._id}>
             <TaskItemEditor
               task={subtask}
               onChange={(updatedSubtask) => handleSubtaskChange(i, updatedSubtask)}
@@ -413,7 +403,7 @@ function ProjectDetails() {
               }}
               projectStart={projectStart}
               projectEnd={projectEnd}
-              allTasks={task.subtasks}
+              allTasks={project.tasks}
             />
             <button type="button" onClick={() => removeSubtask(i)}>Remove Subtask</button>
           </div>
@@ -421,6 +411,7 @@ function ProjectDetails() {
       </div>
     );
   };
+
 
   const handleTaskUpdate = (index, updatedTask) => {
     setProject(prevProject => {
@@ -590,133 +581,198 @@ function ProjectDetails() {
       });
   };
 
+  const cardStyle = {
+  background: '#FFFFFF',
+  borderRadius: '12px',
+  padding: '20px',
+  paddingLeft: 20,
+  marginLeft: 80,
+  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+};
+
+
   return (
-      <div className="project-details">
-        {isEditing ? (
-          <>
-            <div className="edit-form">
+    <div style={{ padding: '20px', backgroundColor: '#f7f6f5' }}>
+      <Sidebar />
+      {/* ─── Top row: Project Info + Create Task ─── */}
+      <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
+        {/* Project Info Card */}
+        <div style={{ flex: 1, ...cardStyle }}>
+          {isEditing ? (
+            <>
               <div className="form-group">
                 <label>Title:</label>
                 <input
                   type="text"
                   value={editedTitle}
-                  onChange={(e) => setEditedTitle(e.target.value)}
+                  onChange={e => setEditedTitle(e.target.value)}
                 />
               </div>
-
               <div className="form-group">
                 <label>Description:</label>
                 <textarea
                   value={editedDescription}
-                  onChange={(e) => setEditedDescription(e.target.value)}
+                  onChange={e => setEditedDescription(e.target.value)}
                 />
               </div>
-
               <div className="form-group">
                 <label>Start Date:</label>
                 <input
                   type="date"
                   value={editedStartDate.slice(0, 10)}
-                  onChange={(e) => setEditedStartDate(e.target.value)}
+                  onChange={e => setEditedStartDate(e.target.value)}
                 />
               </div>
-
               <div className="form-group">
                 <label>End Date:</label>
                 <input
                   type="date"
                   value={editedEndDate.slice(0, 10)}
-                  onChange={(e) => setEditedEndDate(e.target.value)}
+                  onChange={e => setEditedEndDate(e.target.value)}
                 />
               </div>
-
               <button onClick={handleSave}>Save</button>
               <button onClick={() => setIsEditing(false)}>Cancel</button>
+            </>
+          ) : (
+            <>
+              <div
+                    style={{
+                      display: 'flex',
+                      gap: '0px',            // space between columns
+                      alignItems: 'flex-start' // align tops
+                    }} >
+          
+            <div style={{ flex: 1 }}>
+              <h2>{project?.title}</h2>
             </div>
-          </>
-        ) : (
-          <>
-            <h2>{project?.title}</h2>
-            {project?.description && <p><strong>Description:</strong> {project.description}</p>}
-            <p><strong>Start Date:</strong> {new Date(project?.startDate).toLocaleDateString()}</p>
-            <p><strong>End Date:</strong> {new Date(project?.endDate).toLocaleDateString()}</p>
-            <button onClick={() => setIsEditing(true)}>Edit Project</button>
-          </>
-        )}
 
-        <h3>Create Task</h3>
-        <input
-          type="text"
-          name="title"
-          placeholder="Title"
-          value={newTask.title}
-          onChange={handleInputChange}
-        />
-        <input
-          type="text"
-          name="description"
-          placeholder="Description"
-          value={newTask.description}
-          onChange={handleInputChange}
-        />
-        <input
-          type="date"
-          name="startDate"
-          value={newTask.startDate}
-          onChange={handleInputChange}
-        />
-        <input
-          type="date"
-          name="endDate"
-          value={newTask.endDate}
-          onChange={handleInputChange}
-        />
-        <button type="button" onClick={() => addSubtask()}>Add Subtask</button>
-        {renderSubtasks(newTask.subtasks)}
-        <button onClick={handleSubmit}>Submit Task</button>
-
-        <div className="task-section">
-          <h3>Tasks</h3>
-          {project?.tasks?.length > 0 ? (
-            <ul>
-              {project.tasks.map((task, idx) => (
-                <li key={task._id}>
-                  <TaskItemEditor
-                    task={task}
-                    onChange={(updatedTask) => handleTaskUpdate(idx, updatedTask)}
-                    onSave={(updatedTask) => {
-                      if (projectId) {
-                        saveTask(projectId, task._id, updatedTask);
-                      }
-                    }}
-                    projectStart={project.startDate}
-                    projectEnd={project.endDate}
-                    allTasks={project.tasks}
-                  />
-                </li>
-              ))}
-            </ul>
-          ) : <p>No tasks yet.</p>}
+            <div>
+              {project?.description && (
+                <p>
+                  <strong>Description:</strong> {project.description}
+                </p>
+              )}
+              <p>
+                <strong>Start Date:</strong>{' '}
+                {new Date(project?.startDate).toLocaleDateString()}
+              </p>
+              <p>
+                <strong>End Date:</strong>{' '}
+                {new Date(project?.endDate).toLocaleDateString()}
+              </p>
+              <button onClick={() => setIsEditing(true)}>
+                Edit Project
+              </button>
+            </div>
+          </div>
+            </>
+          )}
         </div>
+
+        {/* Create Task Card */}
+        <div style={{ flex: 1, ...cardStyle }}>
+          <h3>Create Task</h3>
+          <div style={{ width: 0, height: 5 }} />
+          <input
+            //style={}
+            type="text"
+            name="title"
+            placeholder="Title"
+            value={newTask.title}
+            onChange={handleInputChange}
+          />
+          <input
+            type="text"
+            name="description"
+            placeholder="Description"
+            value={newTask.description}
+            onChange={handleInputChange}
+          />
+          <input
+            type="date"
+            name="startDate"
+            value={newTask.startDate}
+            onChange={handleInputChange}
+          />
+          <input
+            type="date"
+            name="endDate"
+            value={newTask.endDate}
+            onChange={handleInputChange}
+          />
+          <div style={{ width: 0, height: 5 }} />
+          <button type="button" onClick={() => addSubtask()}>
+            Add Subtask
+          </button>
+          
+          {renderSubtasks(newTask.subtasks)}
+          <button onClick={handleSubmit}>Submit Task</button>
+        </div>
+      </div>
+
+      {/* ─── Middle card: Task List ─── */}
+      <div style={{ marginBottom: '20px', ...cardStyle }}>
+        <h3>Tasks</h3>
+        {project?.tasks?.length > 0 ? (
+          <ul>
+            {project.tasks.map((task, idx) => (
+              <li key={task._id} style={{ marginBottom: '10px', padding: 5,}}>
+                <TaskItemEditor
+                  task={task}
+                  onChange={updated =>
+                    handleTaskUpdate(idx, updated)
+                  }
+                  onSave={updated =>
+                    saveTask(projectId, task._id, updated)
+                  }
+                  projectStart={project.startDate}
+                  projectEnd={project.endDate}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No tasks yet.</p>
+        )}
+      </div>
+
+      {/* ─── Bottom card: Critical Path & Gantt ─── */}
+      <div style={cardStyle}>
         <h3>Critical and Non-Critical Activities</h3>
         <ul>
           {criticalActivities.map(act => (
-            <li key={act.id} style={{ color: act.isCritical ? 'red' : 'green' }}>
-              {act.title} — Start: {act.start.toLocaleDateString()}, End: {act.end.toLocaleDateString()} — 
-              {act.isCritical ? 'Critical' : 'Non-critical'} (Slack: {act.slack.toFixed(2)} days)
+            <li
+              key={act.id}
+              style={{
+                color: act.isCritical ? 'red' : 'green',
+                marginBottom: '6px'
+              }}
+            >
+              {act.title} —{' '}
+              {act.isCritical ? 'Critical' : 'Non-critical'} (Slack:{' '}
+              {act.slack.toFixed(2)}d)
             </li>
           ))}
         </ul>
-        {!loadingProject && project && project.tasks && project.tasks.length > 0 && (
-          <div id='gantt-container'>
-            <Gantt
-              tasks={convertTasksToGantt(project.tasks)}
-              viewMode={ViewMode.Day}
-            />
-            <button onClick={downloadGanttAsImage}>Download Gantt Chart</button>
-          </div>
-        )}
+
+        {!loadingProject &&
+          project?.tasks?.length > 0 && (
+            <div id="gantt-container">
+              <Gantt
+                tasks={convertTasksToGantt(project.tasks)}
+                viewMode={ViewMode.Day}
+              />
+              <button
+                onClick={downloadGanttAsImage}
+                style={{ marginTop: '12px' }}
+              >
+                Download Gantt Chart
+              </button>
+            </div>
+          )}
       </div>
+    </div>
   );
 }
 
