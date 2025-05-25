@@ -100,19 +100,19 @@ function ProjectDetails() {
   };
 
   const addSubtask = (path = []) => {
-  setNewTask(prev => {
-    const clone = JSON.parse(JSON.stringify(prev)); 
-    let current = clone.subtasks;
+    setNewTask(prev => {
+      const clone = JSON.parse(JSON.stringify(prev)); 
+      let current = clone.subtasks;
 
-    for (let i = 0; i < path.length; i++) {
-      current = current[path[i]].subtasks;
-    }
+      for (let i = 0; i < path.length; i++) {
+        current = current[path[i]].subtasks;
+      }
 
-    current.push({ title: '', description: '', startDate: '', endDate: '', subtasks: [] });
+      current.push({ title: '', description: '', startDate: '', endDate: '', subtasks: [] });
 
-    return clone;
-  });
-};
+      return clone;
+    });
+  };
 
   const removeSubtask = (path) => {
     setNewTask(prev => {
@@ -327,8 +327,8 @@ function ProjectDetails() {
           _id: `temp-${Date.now()}`,
           title: '',
           description: '',
-          startDate: '',
-          endDate: '',
+          startDate: task.startDate,
+          endDate:  task.endDate,
           subtasks: []
         }
       ];
