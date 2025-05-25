@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Gantt, ViewMode } from 'gantt-task-react';
 import 'gantt-task-react/dist/index.css';
 import domtoimage from 'dom-to-image';
+import { v4 as uuidv4 } from 'uuid';
 
 function ProjectDetails() {
   const { projectId } = useParams();
@@ -278,13 +279,12 @@ function ProjectDetails() {
   }) => {
 
     const possibleDependencies = allTasks.filter(t => t._id !== task._id);
+    const currentDependencies = task.dependencies || [];
 
     const handleDependenciesChange = (e) => {
       const selectedOptions = Array.from(e.target.selectedOptions).map(o => o.value);
       onChange({ ...task, dependencies: selectedOptions });
     };
-
-    const currentDependencies = task.dependencies || [];
 
     const handleFieldChange = (e) => {
       const { name, value } = e.target;
@@ -381,13 +381,27 @@ function ProjectDetails() {
           max={maxDate}
         />
         
+        <div style={{ marginTop: '8px' }}>
+          <label>Dependencies:</label>
+          <select
+            multiple
+            value={currentDependencies}
+            onChange={handleDependenciesChange}
+          >
+            {possibleDependencies.map(dep => (
+              <option key={dep._id} value={dep._id}>
+                {dep.title}
+              </option>
+            ))}
+          </select>
+        </div>
         <button type="button" onClick={addSubtask}>Add Subtask</button>
         {!isSubtask && (
           <button type="button" onClick={handleSave} style={{ marginLeft: '10px' }}>Save</button>
         )}
 
         {(task.subtasks || []).map((subtask, i) => (
-          <div key={subtask._id}>
+          <div key={uuidv4()}>
             <TaskItemEditor
               task={subtask}
               onChange={(updatedSubtask) => handleSubtaskChange(i, updatedSubtask)}
@@ -399,7 +413,7 @@ function ProjectDetails() {
               }}
               projectStart={projectStart}
               projectEnd={projectEnd}
-              allTasks={project.tasks}
+              allTasks={task.subtasks}
             />
             <button type="button" onClick={() => removeSubtask(i)}>Remove Subtask</button>
           </div>
@@ -407,7 +421,6 @@ function ProjectDetails() {
       </div>
     );
   };
-
 
   const handleTaskUpdate = (index, updatedTask) => {
     setProject(prevProject => {
@@ -678,6 +691,7 @@ function ProjectDetails() {
                     }}
                     projectStart={project.startDate}
                     projectEnd={project.endDate}
+                    allTasks={project.tasks}
                   />
                 </li>
               ))}
