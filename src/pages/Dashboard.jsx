@@ -27,29 +27,47 @@ function Dashboard() {
       try {
         const token = localStorage.getItem('token');
 
-        const [projectsResponse, tasksResponse] = await Promise.all([
-          fetch('http://localhost:5000/api/projects', {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            }
-          }),
-          fetch('http://localhost:5000/api/tasks', {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            }
-          }),
-        ]);
+        const projectsResponse = await fetch('http://localhost:5000/api/projects', {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          }
+        });
 
-        if (projectsResponse.ok && tasksResponse.ok) {
-          const projectsData = await projectsResponse.json();
-          const tasksData = await tasksResponse.json();
-          setProjects(projectsData);
-          setTasks(tasksData);
-        } else {
-          setError('Failed to load projects or tasks');
+        if (!projectsResponse.ok) {
+          setError('Failed to load projects');
+          setLoading(false);
+          return;
         }
+
+        const projectsData = await projectsResponse.json();
+        setProjects(projectsData);
+
+        const tasksByProject = [];
+
+        await Promise.all(
+          projectsData.map(async (project) => {
+            const tasksResponse = await fetch(`http://localhost:5000/api/projects/${project._id}/tasks`, {
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+              }
+            });
+
+            let tasksData = [];
+            if (tasksResponse.ok) {
+              tasksData = await tasksResponse.json();
+            }
+
+            tasksByProject.push({
+              projectId: project._id,
+              tasks: tasksData
+            });
+          })
+        );
+
+        setTasks(tasksByProject);
+
       } catch (err) {
         setError('An error occurred while fetching data');
       } finally {
@@ -224,7 +242,7 @@ function Dashboard() {
                   <span
                     className="card-title"
                   >
-                    {project.name}
+                    {project.title}
                   </span>
                   <div
                     className="more"
@@ -292,7 +310,7 @@ function Dashboard() {
                       onClick={() => toggleSubtasks(task.id)}
                       style={{ cursor: 'pointer' }}
                     >
-                      {task.taskTitle}
+                      {task.title}
                     </span>
                     <div
                       className="more"
@@ -433,8 +451,8 @@ function Dashboard() {
                     <label>Project Name</label>
                     <input
                       type="text"
-                      name="name"
-                      value={formData.name || ''}
+                      name="title"
+                      value={formData.title || ''}
                       onChange={handleInputChange}
                       required
                     />

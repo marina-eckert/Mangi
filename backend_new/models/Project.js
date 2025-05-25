@@ -28,7 +28,11 @@ TaskSchema.add({
     }
   },
   progress: Number,
-  subtasks: [TaskSchema]
+  subtasks: [TaskSchema],
+  dependencies: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Task'
+  }]
 });
 
 const projectSchema = new Schema({

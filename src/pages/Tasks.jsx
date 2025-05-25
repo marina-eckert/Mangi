@@ -15,20 +15,53 @@ function Tasks() {
   });
 
   useEffect(() => {
-    const fetchTasks = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/tasks');
-        const data = await response.json();
-        setTasks(data);
+        const token = localStorage.getItem('token');
+
+        const projectsResponse = await fetch('http://localhost:5000/api/projects', {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          }
+        });
+
+        if (!projectsResponse.ok) {
+          throw new Error('Failed to fetch projects');
+        }
+
+        const projects = await projectsResponse.json();
+
+        const tasksByProject = await Promise.all(
+          projects.map(async (project) => {
+            const tasksResponse = await fetch(`http://localhost:5000/api/projects/${project._id}/tasks`, {
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+              }
+            });
+
+            if (!tasksResponse.ok) {
+              return { projectId: project._id, tasks: [] };
+            }
+
+            const tasks = await tasksResponse.json();
+            return { projectId: project._id, tasks };
+          })
+        );
+
+        setTasks(tasksByProject);
         setLoading(false);
       } catch (error) {
-        console.error('Error fetching tasks:', error);
+        console.error('Error fetching data:', error);
+        setError('Failed to load projects or tasks');
         setLoading(false);
       }
     };
 
-    fetchTasks();
+    fetchData();
   }, []);
+
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -92,7 +125,7 @@ function Tasks() {
                 <div className="cards-container">
                   {tasks.filter(t => t.status === status).map(task => (
                     <div className="card" key={task._id}>
-                      <strong>{task.taskTitle}</strong>
+                      <strong>{task.title}</strong>
                       {task.subtasks && task.subtasks.length > 0 && (
                         <ul style={{ margin: '0.5rem 0' }}>
                           {task.subtasks.map((sub, i) => <li key={i}>{sub}</li>)}

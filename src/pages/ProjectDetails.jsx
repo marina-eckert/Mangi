@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { Gantt, ViewMode } from 'gantt-task-react';
 import 'gantt-task-react/dist/index.css';
+import domtoimage from 'dom-to-image';
 
 function ProjectDetails() {
   const { projectId } = useParams();
@@ -13,10 +14,50 @@ function ProjectDetails() {
     startDate: '',
     endDate: '',
     priority: '',
-    assignee: '',
-    subtasks: []
+    subtasks: [],
+    dependencies: []
   });
   const [criticalActivities, setCriticalActivities] = useState([]);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(project?.title || '');
+  const [editedDescription, setEditedDescription] = useState(project?.description || '');
+  const [editedStartDate, setEditedStartDate] = useState(project?.startDate || '');
+  const [editedEndDate, setEditedEndDate] = useState(project?.endDate || '');
+
+  const handleSave = async () => {
+    const updatedProject = {
+      ...project,
+      title: editedTitle,
+      description: editedDescription,
+      startDate: editedStartDate,
+      endDate: editedEndDate,
+    };
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/projects/${projectId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updatedProject),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update project');
+      }
+
+      const updated = await response.json();
+      // Optionally update parent state or reload
+      setIsEditing(false);
+    } catch (error) {
+      console.error(error);
+      alert("Error updating project");
+    }
+  };
+
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -232,8 +273,19 @@ function ProjectDetails() {
     isSubtask = false,
     projectStart,
     projectEnd,
-    parentTaskDates = null
+    parentTaskDates = null,
+    allTasks = []
   }) => {
+
+    const possibleDependencies = allTasks.filter(t => t._id !== task._id);
+
+    const handleDependenciesChange = (e) => {
+      const selectedOptions = Array.from(e.target.selectedOptions).map(o => o.value);
+      onChange({ ...task, dependencies: selectedOptions });
+    };
+
+    const currentDependencies = task.dependencies || [];
+
     const handleFieldChange = (e) => {
       const { name, value } = e.target;
 
@@ -328,6 +380,7 @@ function ProjectDetails() {
           min={minDate}
           max={maxDate}
         />
+        
         <button type="button" onClick={addSubtask}>Add Subtask</button>
         {!isSubtask && (
           <button type="button" onClick={handleSave} style={{ marginLeft: '10px' }}>Save</button>
@@ -346,6 +399,7 @@ function ProjectDetails() {
               }}
               projectStart={projectStart}
               projectEnd={projectEnd}
+              allTasks={project.tasks}
             />
             <button type="button" onClick={() => removeSubtask(i)}>Remove Subtask</button>
           </div>
@@ -391,8 +445,9 @@ function ProjectDetails() {
 
   function flattenLeafTasks(tasks, parentId = null) {
     const leaves = [];
-    function helper(taskList, parent) {
-      taskList.forEach((task, idx) => {
+
+    function helper(taskList) {
+      taskList.forEach(task => {
         if (!task.subtasks || task.subtasks.length === 0) {
           leaves.push({
             id: task._id || `temp-${Math.random()}`,
@@ -400,80 +455,96 @@ function ProjectDetails() {
             start: new Date(task.startDate),
             end: new Date(task.endDate),
             duration: (new Date(task.endDate) - new Date(task.startDate)) / (1000 * 60 * 60 * 24),
-            dependencies: [],
-            index: leaves.length,
+            dependencies: task.dependencies ? [...task.dependencies] : [],
           });
         } else {
-          helper(task.subtasks, task);
+          helper(task.subtasks);
         }
       });
     }
-    helper(tasks, null);
 
-    for (let i = 1; i < leaves.length; i++) {
-      leaves[i].dependencies.push(leaves[i - 1].id);
-    }
+    helper(tasks);
+
+    const leafIdSet = new Set(leaves.map(l => l.id));
+
+    leaves.forEach(leaf => {
+      leaf.dependencies = leaf.dependencies.filter(depId => leafIdSet.has(depId));
+    });
 
     return leaves;
   }
 
-  // Compute critical path for leaf activities using CPM (Critical Path Method)
+  // Topological sort to ensure correct processing order
+  function topologicalSort(tasks) {
+    const visited = new Set();
+    const sorted = [];
+
+    // Map tasks by id for quick lookup
+    const taskMap = {};
+    tasks.forEach(t => (taskMap[t.id] = t));
+
+    function visit(task) {
+      if (visited.has(task.id)) return;
+      visited.add(task.id);
+
+      task.dependencies.forEach(depId => {
+        if (taskMap[depId]) visit(taskMap[depId]);
+      });
+
+      sorted.push(task);
+    }
+
+    tasks.forEach(visit);
+
+    return sorted;
+  }
+
   function calculateCriticalPath(activities) {
-    // Map id -> activity
     const actMap = {};
-    activities.forEach(act => (actMap[act.id] = { ...act, ES: 0, EF: 0, LS: Infinity, LF: Infinity, slack: 0 }));
+    activities.forEach(act => {
+      actMap[act.id] = { ...act, ES: 0, EF: 0, LS: Infinity, LF: Infinity, slack: 0, isCritical: false };
+    });
 
-    // Step 1: Forward pass to calculate ES and EF
-    function forwardPass() {
+    const sortedActivities = topologicalSort(activities);
+
+    sortedActivities.forEach(act => {
+      if (act.dependencies.length === 0) {
+        actMap[act.id].ES = 0;
+        actMap[act.id].EF = act.duration;
+      } else {
+        const maxEF = Math.max(...act.dependencies.map(depId => actMap[depId].EF));
+        actMap[act.id].ES = maxEF;
+        actMap[act.id].EF = maxEF + act.duration;
+      }
+    });
+
+    const maxEF = Math.max(...activities.map(act => actMap[act.id].EF));
+
+    activities.forEach(act => {
+      const hasDependents = activities.some(a => a.dependencies.includes(act.id));
+      if (!hasDependents) {
+        actMap[act.id].LF = maxEF;
+        actMap[act.id].LS = maxEF - act.duration;
+      }
+    });
+
+    let changed;
+    do {
+      changed = false;
       activities.forEach(act => {
-        if (act.dependencies.length === 0) {
-          actMap[act.id].ES = 0;
-          actMap[act.id].EF = act.duration;
-        } else {
-          actMap[act.id].ES = Math.max(
-            ...act.dependencies.map(depId => actMap[depId].EF)
-          );
-          actMap[act.id].EF = actMap[act.id].ES + act.duration;
-        }
-      });
-    }
-
-    // Step 2: Backward pass to calculate LS and LF
-    function backwardPass() {
-      // Get max EF (project finish time)
-      const maxEF = Math.max(...activities.map(act => actMap[act.id].EF));
-
-      // Initialize LF of tasks with no dependents to maxEF
-      activities.forEach(act => {
-        const hasDependents = activities.some(a => a.dependencies.includes(act.id));
-        if (!hasDependents) {
-          actMap[act.id].LF = maxEF;
-          actMap[act.id].LS = maxEF - act.duration;
-        }
-      });
-
-      // Iterate backward until LS and LF stabilize
-      let changed;
-      do {
-        changed = false;
-        activities.forEach(act => {
-          const dependents = activities.filter(a => a.dependencies.includes(act.id));
-          if (dependents.length > 0) {
-            const minLS = Math.min(...dependents.map(d => actMap[d.id].LS));
-            if (minLS - act.duration < actMap[act.id].LS) {
-              actMap[act.id].LF = minLS;
-              actMap[act.id].LS = minLS - act.duration;
-              changed = true;
-            }
+        const dependents = activities.filter(a => a.dependencies.includes(act.id));
+        if (dependents.length > 0) {
+          const minLS = Math.min(...dependents.map(d => actMap[d.id].LS));
+          if (minLS - act.duration < actMap[act.id].LS) {
+            actMap[act.id].LF = minLS;
+            actMap[act.id].LS = minLS - act.duration;
+            changed = true;
           }
-        });
-      } while (changed);
-    }
+        }
+      });
+    } while (changed);
 
-    forwardPass();
-    backwardPass();
-
-    // Step 3: Calculate slack and mark critical activities
+    // Slack and critical path marking
     activities.forEach(act => {
       const a = actMap[act.id];
       a.slack = a.LS - a.ES;
@@ -491,12 +562,75 @@ function ProjectDetails() {
     }
   }, [project]);
 
+  const downloadGanttAsImage = () => {
+    const node = document.getElementById('gantt-container');
+
+    domtoimage.toPng(node)
+      .then(function (dataUrl) {
+        const link = document.createElement('a');
+        link.download = 'gantt-chart.png';
+        link.href = dataUrl;
+        link.click();
+      })
+      .catch(function (error) {
+        console.error('oops, something went wrong!', error);
+      });
+  };
+
   return (
       <div className="project-details">
-        <h2>{project?.title}</h2>
-        {project?.description && <p><strong>Description:</strong> {project.description}</p>}
-        <p><strong>Start Date:</strong> {new Date(project?.startDate).toLocaleDateString()}</p>
-        <p><strong>End Date:</strong> {new Date(project?.endDate).toLocaleDateString()}</p>
+        {isEditing ? (
+          <>
+            <div className="edit-form">
+              <div className="form-group">
+                <label>Title:</label>
+                <input
+                  type="text"
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Description:</label>
+                <textarea
+                  value={editedDescription}
+                  onChange={(e) => setEditedDescription(e.target.value)}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Start Date:</label>
+                <input
+                  type="date"
+                  value={editedStartDate.slice(0, 10)}
+                  onChange={(e) => setEditedStartDate(e.target.value)}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>End Date:</label>
+                <input
+                  type="date"
+                  value={editedEndDate.slice(0, 10)}
+                  onChange={(e) => setEditedEndDate(e.target.value)}
+                />
+              </div>
+
+              <button onClick={handleSave}>Save</button>
+              <button onClick={() => setIsEditing(false)}>Cancel</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2>{project?.title}</h2>
+            {project?.description && <p><strong>Description:</strong> {project.description}</p>}
+            <p><strong>Start Date:</strong> {new Date(project?.startDate).toLocaleDateString()}</p>
+            <p><strong>End Date:</strong> {new Date(project?.endDate).toLocaleDateString()}</p>
+            <button onClick={() => setIsEditing(true)}>Edit Project</button>
+          </>
+        )}
+
         <h3>Create Task</h3>
         <input
           type="text"
@@ -560,10 +694,13 @@ function ProjectDetails() {
           ))}
         </ul>
         {!loadingProject && project && project.tasks && project.tasks.length > 0 && (
-          <Gantt
-            tasks={convertTasksToGantt(project.tasks)}
-            viewMode={ViewMode.Day}
-          />
+          <div id='gantt-container'>
+            <Gantt
+              tasks={convertTasksToGantt(project.tasks)}
+              viewMode={ViewMode.Day}
+            />
+            <button onClick={downloadGanttAsImage}>Download Gantt Chart</button>
+          </div>
         )}
       </div>
   );

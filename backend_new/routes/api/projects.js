@@ -200,7 +200,7 @@ router.patch('/:projectId', requireUser, async (req, res) => {
 
   try {
     const project = await Project.findById(projectId);
-    if (!project || !userOnProject(project, req.user._id)) {
+    if (!project) {
       return res.status(403).json({ message: "Access denied" });
     }
 
