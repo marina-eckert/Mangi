@@ -59,7 +59,34 @@ function ProjectDetails() {
       alert("Error updating project");
     }
   };
-
+  const removeTask = async (taskId) => {
+    const token = localStorage.getItem('token');
+    console.log('🛡 removeTask token:', token);
+    if (!token) {
+      return alert('Not logged in—no token found.');
+    }
+    try {
+      const res = await fetch(
+        `http://localhost:3000/api/projects/${projectId}/tasks/${taskId}`,
+        {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        }
+      );
+      console.log('🗑 DELETE status:', res.status);
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || `Delete failed: ${res.status}`);
+      }
+      setProject(prev => ({
+        ...prev,
+        tasks: prev.tasks.filter(t => t._id !== taskId)
+      }));
+    } catch (err) {
+      console.error(err);
+      alert(err.message);
+    }
+  };
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -271,77 +298,82 @@ function ProjectDetails() {
   );
 };
   const TaskItemEditor = ({
-    task,
-    onChange,
-    onSave,
-    isSubtask = false,
-    projectStart,
-    projectEnd,
-    parentTaskDates = null,
-    allTasks = []
-  }) => {
+  task,
+  onChange,
+  onSave,
+  onRemove,
+  isSubtask = false,
+  projectStart,
+  projectEnd,
+  parentTaskDates = null,
+  allTasks = []
+}) => {
+  // 1) Local state for the fields
+  const [local, setLocal] = useState({
+    title: task.title || '',
+    description: task.description || '',
+    startDate: task.startDate || '',
+    endDate:   task.endDate   || '',
+    dependencies: task.dependencies || []
+  });
 
-    const possibleDependencies = allTasks.filter(t => t._id !== task._id);
+  // 2) If the parent prop changes (e.g. after saving), sync local state
+  useEffect(() => {
+    setLocal({
+      title: task.title || '',
+      description: task.description || '',
+      startDate: task.startDate || '',
+      endDate:   task.endDate   || '',
+      dependencies: task.dependencies || []
+    });
+  }, [task]);
 
-    const handleDependenciesChange = (e) => {
-      const selectedOptions = Array.from(e.target.selectedOptions).map(o => o.value);
-      onChange({ ...task, dependencies: selectedOptions });
-    };
+  // 3) When any field loses focus, push the change up
+  const handleBlur = () => {
+    onChange({ ...task, ...local });
+  };
 
-    const currentDependencies = task.dependencies || [];
+  // 4) handlers that only update local state
+  const handleFieldChange = e => {
+    const { name, value } = e.target;
+    setLocal(prev => ({ ...prev, [name]: value }));
+  };
 
-    const handleFieldChange = (e) => {
-      const { name, value } = e.target;
+  // 5) Add a new subtask—still default to parent or task dates
+  const addSubtask = () => {
+    const defaultStart = isSubtask
+      ? parentTaskDates.startDate
+      : task.startDate;
+    const defaultEnd = isSubtask
+      ? parentTaskDates.endDate
+      : task.endDate;
 
-      if (name === 'startDate' || name === 'endDate') {
-        const newDates = {
-          ...task,
-          [name]: value
-        };
-
-        const start = new Date(newDates.startDate || task.startDate);
-        const end = new Date(newDates.endDate || task.endDate);
-
-        if (isSubtask && parentTaskDates) {
-          if (start < new Date(parentTaskDates.startDate) || end > new Date(parentTaskDates.endDate)) {
-            alert(`Subtask dates must be within parent task's range: ${parentTaskDates.startDate} to ${parentTaskDates.endDate}`);
-            return;
-          }
-        } else if (!isSubtask && projectStart && projectEnd) {
-          if (start < new Date(projectStart) || end > new Date(projectEnd)) {
-            alert(`Task dates must be within project range: ${projectStart} to ${projectEnd}`);
-            return;
-          }
-        }
+    const newSubtasks = [
+      ...(task.subtasks || []),
+      {
+        _id: `temp-${Date.now()}`,
+        title: '',
+        description: '',
+        startDate: defaultStart,
+        endDate:   defaultEnd,
+        subtasks:  []
       }
+    ];
+    onChange({ ...task, subtasks: newSubtasks });
+  };
 
-      onChange({ ...task, [name]: value });
-    };
-
-    const handleSubtaskChange = (index, updatedSubtask) => {
-      const newSubtasks = [...(task.subtasks || [])];
-      newSubtasks[index] = updatedSubtask;
-      onChange({ ...task, subtasks: newSubtasks });
-    };
-
-    const addSubtask = () => {
-      const newSubtasks = [
-        ...(task.subtasks || []),
-        {
-          _id: `temp-${Date.now()}`,
-          title: '',
-          description: '',
-          startDate: '',
-          endDate: '',
-          subtasks: []
-        }
-      ];
-      onChange({ ...task, subtasks: newSubtasks });
-    };
 
     const removeSubtask = (index) => {
       const newSubtasks = [...(task.subtasks || [])];
       newSubtasks.splice(index, 1);
+      onChange({ ...task, subtasks: newSubtasks });
+    };
+
+
+    // ←—— INSERT THIS: handle updates to an existing nested subtask
+    const handleSubtaskChange = (index, updatedSubtask) => {
+      const newSubtasks = [...(task.subtasks || [])];
+      newSubtasks[index] = updatedSubtask;
       onChange({ ...task, subtasks: newSubtasks });
     };
 
@@ -355,43 +387,73 @@ function ProjectDetails() {
     const maxDate = isSubtask ? parentTaskDates?.endDate : projectEnd;
 
     return (
-      <div style={{ marginLeft: '20px', borderLeft: '1px solid #ccc', paddingLeft: '10px' }}>
-        <input
-          name="title"
-          value={task.title}
-          onChange={handleFieldChange}
-          placeholder="Title"
-        />
-        <input
-          name="description"
-          value={task.description}
-          onChange={handleFieldChange}
-          placeholder="Description"
-        />
-        <input
-          type="date"
-          name="startDate"
-          value={task.startDate ? task.startDate.substring(0, 10) : ''}
-          onChange={handleFieldChange}
-          min={minDate}
-          max={maxDate}
-        />
-        <input
-          type="date"
-          name="endDate"
-          value={task.endDate ? task.endDate.substring(0, 10) : ''}
-          onChange={handleFieldChange}
-          min={minDate}
-          max={maxDate}
-        />
+    <div style={{ marginLeft: isSubtask ? 20 : 0, borderLeft: isSubtask ? '1px solid #ccc' : 'none', paddingLeft: isSubtask ? 10 : 0 }}>
+      {/* Title */}
+      <input
+        name="title"
+        value={local.title}
+        onChange={handleFieldChange}
+        onBlur={handleBlur}
+        placeholder="Title"
+      />
+
+      {/* Description */}
+      <input
+        name="description"
+        value={local.description}
+        onChange={handleFieldChange}
+        onBlur={handleBlur}
+        placeholder="Description"
+      />
+
+      {/* Start Date */}
+      <input
+        type="date"
+        name="startDate"
+        value={local.startDate.substring(0,10)}
+        onChange={handleFieldChange}
+        onBlur={handleBlur}
+        min={isSubtask ? parentTaskDates.startDate : projectStart}
+        max={isSubtask ? parentTaskDates.endDate   : projectEnd}
+      />
+
+      {/* End Date */}
+      <input
+        type="date"
+        name="endDate"
+        value={local.endDate.substring(0,10)}
+        onChange={handleFieldChange}
+        onBlur={handleBlur}
+        min={isSubtask ? parentTaskDates.startDate : projectStart}
+        max={isSubtask ? parentTaskDates.endDate   : projectEnd}
+      />
         
-        <button type="button" onClick={addSubtask}>Add Subtask</button>
-        {!isSubtask && (
-          <button type="button" onClick={handleSave} style={{ marginLeft: '10px' }}>Save</button>
-        )}
+         <button type="button" onClick={addSubtask}>Add Subtask</button>
+      {!isSubtask && (
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              const updated = { ...task, ...local, subtasks: task.subtasks };
+              onSave(updated);
+            }}
+            style={{ marginLeft: '10px' }}
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            onClick={() => onRemove && onRemove(task._id)}
+            style={{ marginLeft: '10px', color: 'red' }}
+          >
+            Remove
+          </button>
+        </>
+      )}
+
 
         {(task.subtasks || []).map((subtask, i) => (
-          <div key={subtask._id}>
+          <div key={subtask._id} style={{ marginTop: 10, paddingLeft: 20 }}>
             <TaskItemEditor
               task={subtask}
               onChange={(updatedSubtask) => handleSubtaskChange(i, updatedSubtask)}
@@ -403,9 +465,11 @@ function ProjectDetails() {
               }}
               projectStart={projectStart}
               projectEnd={projectEnd}
-              allTasks={project.tasks}
+              allTasks={allTasks}
             />
-            <button type="button" onClick={() => removeSubtask(i)}>Remove Subtask</button>
+            <button type="button" onClick={() => removeSubtask(i)} style={{ color: 'red' }}>
+              Remove Subtask
+            </button>
           </div>
         ))}
       </div>
@@ -726,6 +790,7 @@ function ProjectDetails() {
                   onSave={updated =>
                     saveTask(projectId, task._id, updated)
                   }
+                  onRemove={removeTask}
                   projectStart={project.startDate}
                   projectEnd={project.endDate}
                 />
