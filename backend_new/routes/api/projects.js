@@ -147,22 +147,45 @@ router.delete('/:projectId/tasks/:taskId', requireUser, async (req, res) => {
   const { projectId, taskId } = req.params;
 
   try {
-    const project = await Project.findById(projectId);
-    if (!project || !userOnProject(project, req.user._id)) {
-      return res.status(403).json({ message: "Access denied" });
+     const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
     }
+    // ensure req.user._id matches adminId or is in collaborators
+    // const userIdStr = req.user._id.toString();
+    // const isAdmin = project.adminId && project.adminId.toString() === userIdStr;
+    // const isCollaborator = Array.isArray(project.collaborators) &&
+    //   project.collaborators.some(c => c.toString() === userIdStr);
+    // if (!isAdmin && !isCollaborator) {
+    //   return res.status(403).json({ message: "Access denied" });
+    // }
 
+    // (optional) if you only want the project owner to delete:
+    // if (!project.adminId.equals(req.user._id)) {
+    //   return res.status(403).json({ message: "Access denied" });
+    // }
+    // otherwise, any authenticated user may delete
     const task = project.tasks.id(taskId);
     if (!task) return res.status(404).json({ message: "Task not found" });
 
-    await User.updateMany({ assignedTasks: taskId }, { $pull: { assignedTasks: taskId } });
+    try {
+      await User.updateMany(
+        { assignedTasks: { $in: [taskId] } },
+        { $pull: { assignedTasks: taskId } }
+      );
+    } catch (warnErr) {
+      console.warn('Could not update User.assignedTasks:', warnErr);
+    }
 
-    task.remove();
-    await project.save();
+    // task.remove();
+    // await project.save();
+    project.tasks = project.tasks.filter(t => t._id.toString() !== taskId);
+    await project.save(); 
 
-    return res.json({ message: "Deletion complete" });
+    return res.status(200).json({ message: "Deletion complete" });
   } catch (error) {
-    return res.status(500).json(error);
+    console.error('DELETE /projects/:projectId/tasks/:taskId error:', error);
+    return res.status(500).json({ message: 'Server error deleting task', error: error.message, stack: error.stack });
   }
 });
 
@@ -211,6 +234,51 @@ router.patch('/:projectId', requireUser, async (req, res) => {
     return res.status(500).json({ message: "Error updating project", error });
   }
 });
+
+
+// delete a project
+
+router.delete('/:projectId', requireUser, async (req, res) => {
+  const { projectId } = req.params;
+  try {
+    // 1) load project to check existence (and optionally auth)
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    // (optional) restrict deletion to admin only:
+    // if (!project.adminId.equals(req.user._id)) {
+    //   return res.status(403).json({ message: "Access denied" });
+    // }
+
+    // 2) remove cross-refs from users (if you track project IDs on User)
+    try {
+      await User.updateMany(
+        { projects: projectId },
+        { $pull: { projects: projectId } }
+      );
+    } catch (uErr) {
+      console.warn("Could not remove project refs from users:", uErr);
+    }
+
+    // 3) actually delete via Model API
+    const delResult = await Project.deleteOne({ _id: projectId });
+    console.log('Project.deleteOne result:', delResult);
+    if (delResult.deletedCount !== 1) {
+      return res.status(500).json({ message: "Deletion failed" });
+    }
+
+    // 4) respond
+    return res.status(200).json({ message: "Project deleted" });
+  } catch (err) {
+    console.error("DELETE /api/projects/:projectId error:", err);
+    return res
+      .status(500)
+      .json({ message: "Server error deleting project", error: err.message });
+  }
+});
+
 
 // Add a subtask to a task
 router.post('/:projectId/tasks/:taskId/subtasks', requireUser, async (req, res) => {
