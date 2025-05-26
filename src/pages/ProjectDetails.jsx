@@ -8,6 +8,8 @@ import { MdHeight, MdAccountTree } from 'react-icons/md';
 
 function ProjectDetails() {
   const { projectId } = useParams();
+  const [users, setUsers] = useState([]);
+  const [newUserName, setNewUserName] = useState('');
   const [project, setProject] = useState(null);
   const [loadingProject, setLoadingProject] = useState(true);
   const [newTask, setNewTask] = useState({
@@ -60,6 +62,40 @@ function ProjectDetails() {
     }
   };
 
+  const addUser = () => {
+  if (!newUserName.trim()) return;
+  setUsers(prev => [...prev, newUserName.trim()]);
+  setNewUserName('');
+};
+
+  const removeTask = async (taskId) => {
+    const token = localStorage.getItem('token');
+    console.log('🛡 removeTask token:', token);
+    if (!token) {
+      return alert('Not logged in—no token found.');
+    }
+    try {
+      const res = await fetch(
+        `http://localhost:3000/api/projects/${projectId}/tasks/${taskId}`,
+        {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        }
+      );
+      console.log('🗑 DELETE status:', res.status);
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || `Delete failed: ${res.status}`);
+      }
+      setProject(prev => ({
+        ...prev,
+        tasks: prev.tasks.filter(t => t._id !== taskId)
+      }));
+    } catch (err) {
+      console.error(err);
+      alert(err.message);
+    }
+  };
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -162,7 +198,7 @@ function ProjectDetails() {
           />
 
           <div style={{ marginTop: '5px' }}>
-            <button type="button" onClick={() => addSubtask(newPath)}>Add Subtask</button>
+            <button type="button"  onClick={() => addSubtask(newPath)}>Add Subtask</button>
             <button type="button" onClick={() => removeSubtask(newPath)} style={{ marginLeft: '10px', color: 'red' }}>Remove</button>
           </div>
 
@@ -271,77 +307,98 @@ function ProjectDetails() {
   );
 };
   const TaskItemEditor = ({
-    task,
-    onChange,
-    onSave,
-    isSubtask = false,
-    projectStart,
-    projectEnd,
-    parentTaskDates = null,
-    allTasks = []
-  }) => {
+  task,
+  onChange,
+  onSave,
+  onRemove,
+  isSubtask = false,
+  projectStart,
+  projectEnd,
+  parentTaskDates = null,
+  allTasks = []
+}) => {
+  // 1) Local state for the fields
+  const [local, setLocal] = useState({
+    title: task.title || '',
+    description: task.description || '',
+    startDate: task.startDate || '',
+    endDate:   task.endDate   || '',
+    dependencies: task.dependencies || []
+  });
 
-    const possibleDependencies = allTasks.filter(t => t._id !== task._id);
+    // 1b) Local state for assigned users
+  const [localUsers, setLocalUsers] = useState(task.assignedUsers || []);
+  useEffect(() => {
+    setLocalUsers(task.assignedUsers || []);
+  }, [task.assignedUsers]);
 
-    const handleDependenciesChange = (e) => {
-      const selectedOptions = Array.from(e.target.selectedOptions).map(o => o.value);
-      onChange({ ...task, dependencies: selectedOptions });
-    };
+  // 1c) Demo “add user” handler
+  const addUserToTask = () => {
+    const name = prompt("Enter user name to assign to this task:");
+    if (name && !localUsers.includes(name)) {
+      const updatedUsers = [...localUsers, name];
+      setLocalUsers(updatedUsers);
+      onChange({ ...task, ...local, assignedUsers: updatedUsers });
+    }
+  };
 
-    const currentDependencies = task.dependencies || [];
+  // 2) If the parent prop changes (e.g. after saving), sync local state
+  useEffect(() => {
+    setLocal({
+      title: task.title || '',
+      description: task.description || '',
+      startDate: task.startDate || '',
+      endDate:   task.endDate   || '',
+      dependencies: task.dependencies || []
+    });
+  }, [task]);
 
-    const handleFieldChange = (e) => {
-      const { name, value } = e.target;
+  // 3) When any field loses focus, push the change up
+  const handleBlur = () => {
+    onChange({ ...task, ...local });
+  };
 
-      if (name === 'startDate' || name === 'endDate') {
-        const newDates = {
-          ...task,
-          [name]: value
-        };
+  // 4) handlers that only update local state
+  const handleFieldChange = e => {
+    const { name, value } = e.target;
+    setLocal(prev => ({ ...prev, [name]: value }));
+  };
 
-        const start = new Date(newDates.startDate || task.startDate);
-        const end = new Date(newDates.endDate || task.endDate);
+  // 5) Add a new subtask—still default to parent or task dates
+  const addSubtask = () => {
+    const defaultStart = isSubtask
+      ? parentTaskDates.startDate
+      : task.startDate;
+    const defaultEnd = isSubtask
+      ? parentTaskDates.endDate
+      : task.endDate;
 
-        if (isSubtask && parentTaskDates) {
-          if (start < new Date(parentTaskDates.startDate) || end > new Date(parentTaskDates.endDate)) {
-            alert(`Subtask dates must be within parent task's range: ${parentTaskDates.startDate} to ${parentTaskDates.endDate}`);
-            return;
-          }
-        } else if (!isSubtask && projectStart && projectEnd) {
-          if (start < new Date(projectStart) || end > new Date(projectEnd)) {
-            alert(`Task dates must be within project range: ${projectStart} to ${projectEnd}`);
-            return;
-          }
-        }
+    const newSubtasks = [
+      ...(task.subtasks || []),
+      {
+        _id: `temp-${Date.now()}`,
+        title: '',
+        description: '',
+        startDate: defaultStart,
+        endDate:   defaultEnd,
+        subtasks:  []
       }
+    ];
+    onChange({ ...task, subtasks: newSubtasks });
+  };
 
-      onChange({ ...task, [name]: value });
-    };
-
-    const handleSubtaskChange = (index, updatedSubtask) => {
-      const newSubtasks = [...(task.subtasks || [])];
-      newSubtasks[index] = updatedSubtask;
-      onChange({ ...task, subtasks: newSubtasks });
-    };
-
-    const addSubtask = () => {
-      const newSubtasks = [
-        ...(task.subtasks || []),
-        {
-          _id: `temp-${Date.now()}`,
-          title: '',
-          description: '',
-          startDate: '',
-          endDate: '',
-          subtasks: []
-        }
-      ];
-      onChange({ ...task, subtasks: newSubtasks });
-    };
 
     const removeSubtask = (index) => {
       const newSubtasks = [...(task.subtasks || [])];
       newSubtasks.splice(index, 1);
+      onChange({ ...task, subtasks: newSubtasks });
+    };
+
+
+    // ←—— INSERT THIS: handle updates to an existing nested subtask
+    const handleSubtaskChange = (index, updatedSubtask) => {
+      const newSubtasks = [...(task.subtasks || [])];
+      newSubtasks[index] = updatedSubtask;
       onChange({ ...task, subtasks: newSubtasks });
     };
 
@@ -355,43 +412,109 @@ function ProjectDetails() {
     const maxDate = isSubtask ? parentTaskDates?.endDate : projectEnd;
 
     return (
-      <div style={{ marginLeft: '20px', borderLeft: '1px solid #ccc', paddingLeft: '10px' }}>
-        <input
-          name="title"
-          value={task.title}
-          onChange={handleFieldChange}
-          placeholder="Title"
-        />
-        <input
-          name="description"
-          value={task.description}
-          onChange={handleFieldChange}
-          placeholder="Description"
-        />
-        <input
-          type="date"
-          name="startDate"
-          value={task.startDate ? task.startDate.substring(0, 10) : ''}
-          onChange={handleFieldChange}
-          min={minDate}
-          max={maxDate}
-        />
-        <input
-          type="date"
-          name="endDate"
-          value={task.endDate ? task.endDate.substring(0, 10) : ''}
-          onChange={handleFieldChange}
-          min={minDate}
-          max={maxDate}
-        />
+    <div style={{ marginLeft: isSubtask ? 20 : 0, borderLeft: isSubtask ? '1px solid #ccc' : 'none', paddingLeft: isSubtask ? 10 : 0 }}>
+      {/* Title */}
+      <input
+        name="title"
+        value={local.title}
+        onChange={handleFieldChange}
+        onBlur={handleBlur}
+        placeholder="Title"
+      />
+
+      {/* Description */}
+      <input
+        name="description"
+        value={local.description}
+        onChange={handleFieldChange}
+        onBlur={handleBlur}
+        placeholder="Description"
+      />
+
+      {/* Start Date */}
+      <input
+        type="date"
+        name="startDate"
+        value={local.startDate.substring(0,10)}
+        onChange={handleFieldChange}
+        onBlur={handleBlur}
+        min={isSubtask ? parentTaskDates.startDate : projectStart}
+        max={isSubtask ? parentTaskDates.endDate   : projectEnd}
+      />
+
+      {/* End Date */}
+      <input
+        type="date"
+        name="endDate"
+        value={local.endDate.substring(0,10)}
+        onChange={handleFieldChange}
+        onBlur={handleBlur}
+        min={isSubtask ? parentTaskDates.startDate : projectStart}
+        max={isSubtask ? parentTaskDates.endDate   : projectEnd}
+      />
+
+            {/* ── Assigned Users Row ── */}
+      <div style={{ display: 'flex', alignItems: 'center', margin: '10px 0', marginLeft: 10 }}>
+        {localUsers.map((u, i) => (
+          <div
+            key={i}
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: '50%',
+              background: '#1e293b',
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 6,
+              fontSize: 12,
+            }}
+          >
+            {u.charAt(0).toUpperCase()}
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={addUserToTask}
+          style={{
+            padding: '4px 8px',
+            border: '1px solid #ccc',
+            borderRadius: 4,
+            background: 'grey',
+            cursor: 'pointer'
+          }}
+        >
+          + Assign
+        </button>
+      </div>
         
-        <button type="button" onClick={addSubtask}>Add Subtask</button>
-        {!isSubtask && (
-          <button type="button" onClick={handleSave} style={{ marginLeft: '10px' }}>Save</button>
-        )}
+         <button type="button" style= {{marginLeft:10}} onClick={addSubtask}>Add Subtask</button>
+      {!isSubtask && (
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              const updated = { ...task, ...local, subtasks: task.subtasks };
+              onSave(updated);
+            }}
+            style={{ marginLeft: '10px' }}
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            onClick={() => onRemove && onRemove(task._id)}
+            style={{ marginLeft: '10px', color: 'red' }}
+          >
+            Remove
+          </button>
+        </>
+      )}
+
 
         {(task.subtasks || []).map((subtask, i) => (
-          <div key={subtask._id}>
+          <div key={subtask._id} style={{ marginTop: 10, paddingLeft: 20 }}>
             <TaskItemEditor
               task={subtask}
               onChange={(updatedSubtask) => handleSubtaskChange(i, updatedSubtask)}
@@ -403,9 +526,11 @@ function ProjectDetails() {
               }}
               projectStart={projectStart}
               projectEnd={projectEnd}
-              allTasks={project.tasks}
+              allTasks={allTasks}
             />
-            <button type="button" onClick={() => removeSubtask(i)}>Remove Subtask</button>
+            <button type="button" onClick={() => removeSubtask(i)} style={{ color: 'red' }}>
+              Remove Subtask
+            </button>
           </div>
         ))}
       </div>
@@ -653,14 +778,17 @@ function ProjectDetails() {
                   <strong>Description:</strong> {project.description}
                 </p>
               )}
+              <div style={{ width: 0, height: 5 }} />
               <p>
                 <strong>Start Date:</strong>{' '}
                 {new Date(project?.startDate).toLocaleDateString()}
               </p>
+              <div style={{ width: 0, height: 5 }} />
               <p>
                 <strong>End Date:</strong>{' '}
                 {new Date(project?.endDate).toLocaleDateString()}
               </p>
+              <div style={{ width: 0, height: 5 }} />
               <button onClick={() => setIsEditing(true)}>
                 Edit Project
               </button>
@@ -702,7 +830,7 @@ function ProjectDetails() {
             onChange={handleInputChange}
           />
           <div style={{ width: 0, height: 5 }} />
-          <button type="button" onClick={() => addSubtask()}>
+          <button type="button" style= {{marginRight:10}} onClick={() => addSubtask()}>
             Add Subtask
           </button>
           
@@ -712,12 +840,12 @@ function ProjectDetails() {
       </div>
 
       {/* ─── Middle card: Task List ─── */}
-      <div style={{ marginBottom: '20px', ...cardStyle }}>
+      <div style={{ listStyle: 'none',marginBottom: '20px', ...cardStyle }}>
         <h3>Tasks</h3>
         {project?.tasks?.length > 0 ? (
           <ul>
             {project.tasks.map((task, idx) => (
-              <li key={task._id} style={{ marginBottom: '10px', padding: 5,}}>
+              <li key={task._id} style={{ listStyle: 'none', marginBottom: '10px', marginLeft:5, padding: 5,}}>
                 <TaskItemEditor
                   task={task}
                   onChange={updated =>
@@ -726,6 +854,7 @@ function ProjectDetails() {
                   onSave={updated =>
                     saveTask(projectId, task._id, updated)
                   }
+                  onRemove={removeTask}
                   projectStart={project.startDate}
                   projectEnd={project.endDate}
                 />
@@ -746,7 +875,9 @@ function ProjectDetails() {
               key={act.id}
               style={{
                 color: act.isCritical ? 'red' : 'green',
-                marginBottom: '6px'
+                marginTop: '6px',
+                marginBottom: '6px',
+                marginLeft: 40,
               }}
             >
               {act.title} —{' '}
@@ -772,6 +903,74 @@ function ProjectDetails() {
             </div>
           )}
       </div>
+      {/* ─── Users Card ─── */}
+<div style={{ ...cardStyle, marginTop: '20px',  padding: 20 }}>
+  <h3>Project Collaborators</h3>
+  <div style={{height: 9}}/>
+  {/* Input + add button */}
+  <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+    <input
+      type="text"
+      placeholder="Enter user name"
+      value={newUserName}
+      onChange={e => setNewUserName(e.target.value)}
+      style={{ flex: 1, padding: '6px 8px', borderRadius: 4, border: '1px solid #ccc' }}
+    />
+    <button
+      onClick={addUser}
+      style={{
+        padding: '6px 12px',
+        border: 'none',
+        borderRadius: 4,
+        background: '#1e293b',
+        color: '#fff',
+        cursor: 'pointer'
+      }}
+    >
+      Add User
+    </button>
+  </div>
+
+  {/* Display added users */}
+  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+    {users.map((u, i) => (
+      <div
+        key={i}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '6px 10px',
+          background: '#fff',
+          borderRadius: 8,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+        }}
+      >
+        {/* Simple avatar circle with initial */}
+        <div
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: '50%',
+            background: '#1e293b',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 'bold'
+          }}
+        >
+          {u.charAt(0).toUpperCase()}
+        </div>
+        <span>{u}</span>
+      </div>
+    ))}
+    {users.length === 0 && (
+      <p style={{ color: '#6b7280' }}>No users added yet.</p>
+    )}
+  </div>
+</div>
+
     </div>
   );
 }
